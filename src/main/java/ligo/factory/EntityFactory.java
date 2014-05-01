@@ -1,11 +1,13 @@
-package me.roar.model.factory;
+package ligo.factory;
 
-import me.roar.config.DBConfig;
-import me.roar.utils.Beanify;
+import ligo.config.DBConfig;
+import ligo.utils.Beanify;
+import ligo.utils.EntityUtils;
 import org.neo4j.graphdb.*;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
 
 /**
  * Basic CRUD for a given Entity
@@ -66,5 +68,26 @@ public abstract class EntityFactory<T> {
       iterator.close();
       tx.success();
     }
+  }
+
+
+  public T createUnique(final T t) {
+    Map<String, Object> properties = EntityUtils.extractPersistableProperties(t);
+
+//    try (Transaction tx = db.beginTx();
+//         ResourceIterator<Node> resourceIterator = db.findNodesByLabelAndProperty(LION_LABEL, NAME, name).iterator()) {
+//      if (resourceIterator == null || !resourceIterator.hasNext()) {
+//        l = createLion(name);
+//      } else {
+//        while (resourceIterator.hasNext()) {
+//          // should never have more than 1 element here
+//          l = new Beanify<>(new Lion()).get(resourceIterator.next());
+//          break;
+//        }
+//      }
+//      resourceIterator.close();
+//      tx.success();
+//    }
+    return t;
   }
 }

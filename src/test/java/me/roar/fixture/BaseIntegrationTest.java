@@ -1,6 +1,6 @@
 package me.roar.fixture;
 
-import me.roar.config.DBConfig;
+import ligo.config.DBConfig;
 
 /**
  * Sets up DB

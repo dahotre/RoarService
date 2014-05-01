@@ -1,4 +1,4 @@
-package me.roar.model.factory;
+package ligo.meta;
 
 /**
  * Node or Relations

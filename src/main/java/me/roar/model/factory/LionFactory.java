@@ -1,7 +1,8 @@
 package me.roar.model.factory;
 
+import ligo.factory.EntityFactory;
 import me.roar.model.Lion;
-import me.roar.utils.Beanify;
+import ligo.utils.Beanify;
 import org.neo4j.graphdb.*;
 
 import java.util.Date;

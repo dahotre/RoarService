@@ -1,5 +1,6 @@
 package me.roar.utils;
 
+import ligo.utils.Beanify;
 import me.roar.model.Lion;
 import org.junit.Test;
 

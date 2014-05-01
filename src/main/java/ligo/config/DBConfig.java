@@ -1,4 +1,4 @@
-package me.roar.config;
+package ligo.config;
 
 import me.roar.model.factory.LionFactory;
 import org.neo4j.graphdb.GraphDatabaseService;

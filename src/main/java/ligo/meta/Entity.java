@@ -1,6 +1,4 @@
-package me.roar.config;
-
-import me.roar.model.factory.EntityType;
+package ligo.meta;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -11,4 +9,5 @@ import java.lang.annotation.RetentionPolicy;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Entity {
   EntityType type() default EntityType.NODE;
+  String label() default "";
 }

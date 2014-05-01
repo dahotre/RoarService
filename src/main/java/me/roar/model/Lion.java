@@ -1,13 +1,14 @@
 package me.roar.model;
 
-import me.roar.config.Entity;
-import me.roar.model.factory.EntityType;
+import ligo.meta.LigoEntity;
+import ligo.meta.Entity;
+import ligo.meta.EntityType;
 
 /**
  * Lion entity
  */
-@Entity(type = EntityType.NODE)
-public class Lion extends BaseNode {
+@Entity(type = EntityType.NODE, label = "Lion")
+public class Lion extends LigoEntity {
   private String name;
 
   public String getName() {

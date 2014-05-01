@@ -1,4 +1,4 @@
-package me.roar.utils;
+package ligo.utils;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.neo4j.graphdb.Node;

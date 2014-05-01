@@ -38,5 +38,6 @@ public class LionFactoryIntegrationTest extends BaseIntegrationTest {
     assertEquals(LION_NAME, foundLion.getName());
     assertTrue(foundLion.getcAt() <= currentTime);
     assertTrue(foundLion.getuAt() <= currentTime);
+    assertNotNull(foundLion.getId());
   }
 }

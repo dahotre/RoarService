@@ -1,4 +1,4 @@
-package me.roar.model;
+package ligo.meta;
 
 import java.util.Date;
 
@@ -7,7 +7,7 @@ import java.util.Date;
  * long, and helpers are provided to get util date format.
  * 
  */
-public abstract class BaseNode {
+public abstract class LigoEntity {
   private Long id;
   private long cAt;
   private long uAt;
