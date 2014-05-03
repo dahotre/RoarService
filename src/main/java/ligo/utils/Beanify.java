@@ -1,6 +1,5 @@
 package ligo.utils;
 
-import org.apache.commons.beanutils.BeanUtils;
 import org.neo4j.graphdb.Node;
 
 import java.lang.reflect.InvocationTargetException;
@@ -11,31 +10,27 @@ import java.util.Map;
  * Converts Node/Relations to Objects
  */
 public class Beanify<T> {
-  private T t;
 
-  private Beanify(){}
-
-  public Beanify(T t) {
-    this.t = t;
-  }
-
-  public T get(Map<String, Object> map) {
+  public T get(Map<String, Object> map, Class<T> klass) {
     if (map == null) return null;
+
+    T newInstance = null;
     try {
-      BeanUtils.populate(t, map);
-    } catch (IllegalAccessException | InvocationTargetException e) {
+      newInstance = klass.getConstructor().newInstance();
+      EntityUtils.populate(newInstance, map);
+    } catch (IllegalAccessException | InvocationTargetException | InstantiationException | NoSuchMethodException e) {
       e.printStackTrace();
     }
-    return t;
+    return newInstance;
   }
 
-  public T get(Node n) {
+  public T get(Node n, Class<T> klass) {
     if (n == null) return null;
 
     Map<String, Object> properties = new HashMap<>();
     for (String key : n.getPropertyKeys()) {
       properties.put(key, n.getProperty(key));
     }
-    return get(properties);
+    return get(properties, klass);
   }
 }

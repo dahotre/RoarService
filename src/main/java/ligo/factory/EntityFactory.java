@@ -1,12 +1,12 @@
 package ligo.factory;
 
 import ligo.config.DBConfig;
+import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.utils.Beanify;
 import ligo.utils.EntityUtils;
 import org.neo4j.graphdb.*;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
 /**
@@ -20,8 +20,7 @@ public abstract class EntityFactory<T> {
 
   private Constructor<? extends T> constructor;
 
-  private EntityFactory() {
-  }
+  private EntityFactory() {}
 
   public EntityFactory(Class<? extends T> impl) {
     try {
@@ -41,26 +40,26 @@ public abstract class EntityFactory<T> {
     this.db = db;
   }
 
-  public T find(final Label label, final String key, final String value) {
+  public T find(final String key, final String value, Class<T> klass)
+      throws IllegalLabelExtractionAttemptException {
+    String labelName = EntityUtils.extractNodeLabel(klass);
     try (Transaction tx = db.beginTx();
         ResourceIterator<Node> nodes =
-            db.findNodesByLabelAndProperty(label, key, value).iterator()) {
+            db.findNodesByLabelAndProperty(DynamicLabel.label(labelName), key, value).iterator()) {
 
       if (nodes != null && nodes.hasNext()) {
         Node node = nodes.next();
-        return new Beanify<>(this.constructor.newInstance()).get(node);
+        return new Beanify<T>().get(node, klass);
       }
       tx.success();
-    } catch (InvocationTargetException | IllegalAccessException | InstantiationException e) {
-      e.printStackTrace();
     }
     return null;
   }
 
   public void delete(final Label label, final String key, final String value) {
     try (Transaction tx = db.beginTx();
-         ResourceIterator<Node> iterator =
-             db.findNodesByLabelAndProperty(label, key, value).iterator()) {
+        ResourceIterator<Node> iterator =
+            db.findNodesByLabelAndProperty(label, key, value).iterator()) {
       while (iterator.hasNext()) {
         final Node node = iterator.next();
         node.delete();
@@ -70,24 +69,42 @@ public abstract class EntityFactory<T> {
     }
   }
 
-
-  public T createUnique(final T t) {
+  /**
+   * If an object with the same Id exists, it will be returned. Else the given instance will be
+   * persisted.
+   * 
+   * @param t
+   * @return
+   * @throws IllegalLabelExtractionAttemptException if given class is not @Entity annotated
+   */
+  public T createUnique(final T t) throws IllegalLabelExtractionAttemptException {
     Map<String, Object> properties = EntityUtils.extractPersistableProperties(t);
+    String labelName = EntityUtils.extractNodeLabel(t.getClass());
 
-//    try (Transaction tx = db.beginTx();
-//         ResourceIterator<Node> resourceIterator = db.findNodesByLabelAndProperty(LION_LABEL, NAME, name).iterator()) {
-//      if (resourceIterator == null || !resourceIterator.hasNext()) {
-//        l = createLion(name);
-//      } else {
-//        while (resourceIterator.hasNext()) {
-//          // should never have more than 1 element here
-//          l = new Beanify<>(new Lion()).get(resourceIterator.next());
-//          break;
-//        }
-//      }
-//      resourceIterator.close();
-//      tx.success();
-//    }
+    try (Transaction tx = db.beginTx()) {
+      final Object idObject = properties.get("id");
+      final boolean isIdBlank = idObject == null || ((String) idObject).trim().isEmpty();
+
+      final long id = isIdBlank ? EntityUtils.generateId() : (Long) idObject;
+
+      Node existingNode = null;
+      if (!isIdBlank) {
+        existingNode = db.getNodeById(id);
+      }
+
+      if (existingNode != null) {
+        return new Beanify<T>().get(existingNode, (Class<T>) t.getClass());
+      } else {
+        Node tNode = db.createNode(DynamicLabel.label(labelName));
+
+        properties.put("id", id);
+        for (Map.Entry<String, Object> prop : properties.entrySet()) {
+          tNode.setProperty(prop.getKey(), prop.getValue());
+        }
+      }
+
+      tx.success();
+    }
     return t;
   }
 }

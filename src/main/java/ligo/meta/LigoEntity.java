@@ -36,12 +36,16 @@ public abstract class LigoEntity {
     this.uAt = uAt;
   }
 
+  @Transient
   public Date getCreatedAt() {
     return new Date(this.cAt);
   }
   public void setCreatedAt(Date dt) {
     this.cAt = dt.getTime();
+    this.uAt = dt.getTime();
   }
+
+  @Transient
   public Date getUpdatedAt() {
     return new Date(this.uAt);
   }

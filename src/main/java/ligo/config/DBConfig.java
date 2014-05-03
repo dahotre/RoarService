@@ -7,28 +7,39 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.schema.IndexDefinition;
 import org.neo4j.graphdb.schema.Schema;
 
+import java.io.IOException;
+import java.util.Properties;
+
 /**
  * Configures Neo start/shut
  */
 public class DBConfig {
 
   public static boolean isDbOn = false;
+  private static String dbPath;
 
   private GraphDatabaseService db;
 
-  private String DB_PATH = "resources/db";
+  private final String DB_PROP_FILE = "db.properties";
 
   public DBConfig() {
+    Properties dbProperties = new Properties();
+    try {
+      dbProperties.load(DBConfig.class.getClassLoader().getResourceAsStream(DB_PROP_FILE));
+      dbPath = dbProperties.getProperty("dbPath");
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     start();
   }
 
   public DBConfig(String dbPath) {
-    this.DB_PATH = dbPath;
+    this.dbPath = dbPath;
     start();
   }
 
   public void start() {
-    db = new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(DB_PATH).newGraphDatabase();
+    db = new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(dbPath).newGraphDatabase();
     isDbOn = true;
     registerShutdownHook(db);
     createIndexes();

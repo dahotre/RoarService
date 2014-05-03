@@ -8,6 +8,6 @@ import java.lang.annotation.RetentionPolicy;
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Entity {
-  EntityType type() default EntityType.NODE;
-  String label() default "";
+  public EntityType type() default EntityType.NODE;
+  public String label() default "";
 }

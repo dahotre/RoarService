@@ -1,6 +1,7 @@
 package me.roar.model.factory;
 
-import me.roar.fixture.BaseIntegrationTest;
+import ligo.exceptions.IllegalLabelExtractionAttemptException;
+import me.roar.fixture.TestConstants;
 import me.roar.model.Lion;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,10 +15,10 @@ import static org.junit.Assert.assertTrue;
 /**
  * Tests LionFactory
  */
-public class LionFactoryIntegrationTest extends BaseIntegrationTest {
+public class LionFactoryIntegrationTest {
 
   private static final String LION_NAME = "Ian";
-  private LionFactory lionFactory = new LionFactory(dbConfig.getDb());
+  private static final LionFactory lionFactory = new LionFactory(TestConstants.DB_CONFIG.getDb());
 
   @Before
   public void setup() {
@@ -25,8 +26,8 @@ public class LionFactoryIntegrationTest extends BaseIntegrationTest {
   }
 
   @Test
-  public void testCreateUniqueLion() throws InterruptedException {
-    Lion lion = lionFactory.createUniqueLion(LION_NAME);
+  public void testCreateUniqueLion() throws InterruptedException, IllegalLabelExtractionAttemptException {
+    Lion lion = lionFactory.createByName(LION_NAME);
     assertNotNull(lion);
     assertEquals(LION_NAME, lion.getName());
     assertTrue(lion.getCreatedAt().compareTo(new Date()) <= 0);
