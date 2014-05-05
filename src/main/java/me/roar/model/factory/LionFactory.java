@@ -3,9 +3,7 @@ package me.roar.model.factory;
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.factory.EntityFactory;
 import me.roar.model.Lion;
-import org.neo4j.graphdb.DynamicLabel;
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Label;
 
 import java.util.Date;
 
@@ -13,9 +11,8 @@ import java.util.Date;
  * CRUD ops for Lion
  */
 public class LionFactory extends EntityFactory<Lion> {
-  public static final Label LION_LABEL = DynamicLabel.label("lion");
 
-  public static final String NAME = "name";
+  private static final String NAME = "name";
 
   public LionFactory(){
     super(Lion.class);
@@ -23,14 +20,6 @@ public class LionFactory extends EntityFactory<Lion> {
 
   public LionFactory(GraphDatabaseService db) {
     super(Lion.class, db);
-  }
-
-  private LionFactory(Class<? extends Lion> impl) {
-    super(impl);
-  }
-
-  private LionFactory(Class<? extends Lion> impl, GraphDatabaseService db) {
-    super(impl, db);
   }
 
   /**
@@ -56,7 +45,11 @@ public class LionFactory extends EntityFactory<Lion> {
   }
 
   public void deleteByName(final String name) {
-    delete(LION_LABEL, NAME, name);
+    try {
+      delete(Lion.class, NAME, name);
+    } catch (IllegalLabelExtractionAttemptException e) {
+      e.printStackTrace();
+    }
   }
 
 }

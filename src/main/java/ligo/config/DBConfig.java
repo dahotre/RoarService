@@ -1,11 +1,7 @@
 package ligo.config;
 
-import me.roar.model.factory.LionFactory;
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.graphdb.schema.IndexDefinition;
-import org.neo4j.graphdb.schema.Schema;
 
 import java.io.IOException;
 import java.util.Properties;
@@ -42,24 +38,6 @@ public class DBConfig {
     db = new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(dbPath).newGraphDatabase();
     isDbOn = true;
     registerShutdownHook(db);
-    createIndexes();
-  }
-
-  private void createIndexes() {
-    try (Transaction tx = db.beginTx()) {
-      final Schema schema = db.schema();
-      final Iterable<IndexDefinition> lionIndexes = schema.getIndexes(LionFactory.LION_LABEL);
-      for (IndexDefinition lionIndex : lionIndexes) {
-        for (String key : lionIndex.getPropertyKeys()) {
-          if (key.equals(LionFactory.NAME)) {
-            lionIndex.drop();
-            break;
-          }
-        }
-      }
-      schema.indexFor(LionFactory.LION_LABEL).on(LionFactory.NAME).create();
-      tx.success();
-    }
   }
 
   private void registerShutdownHook(final GraphDatabaseService db) {

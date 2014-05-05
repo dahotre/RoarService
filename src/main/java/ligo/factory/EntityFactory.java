@@ -5,16 +5,17 @@ import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.utils.Beanify;
 import ligo.utils.EntityUtils;
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.schema.IndexDefinition;
+import org.neo4j.graphdb.schema.Schema;
 
 import java.lang.reflect.Constructor;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Basic CRUD for a given Entity
  */
 public abstract class EntityFactory<T> {
-  public static final String cAT = "cAt";
-  public static final String uAT = "uAt";
 
   protected GraphDatabaseService db;
 
@@ -56,10 +57,10 @@ public abstract class EntityFactory<T> {
     return null;
   }
 
-  public void delete(final Label label, final String key, final String value) {
+  public void delete(final Class<T> klass, final String key, final String value) throws IllegalLabelExtractionAttemptException {
     try (Transaction tx = db.beginTx();
         ResourceIterator<Node> iterator =
-            db.findNodesByLabelAndProperty(label, key, value).iterator()) {
+            db.findNodesByLabelAndProperty(DynamicLabel.label(EntityUtils.extractNodeLabel(klass)), key, value).iterator()) {
       while (iterator.hasNext()) {
         final Node node = iterator.next();
         node.delete();
@@ -80,6 +81,8 @@ public abstract class EntityFactory<T> {
   public T createUnique(final T t) throws IllegalLabelExtractionAttemptException {
     Map<String, Object> properties = EntityUtils.extractPersistableProperties(t);
     String labelName = EntityUtils.extractNodeLabel(t.getClass());
+
+    verifyOrBuildIndexes(t);
 
     try (Transaction tx = db.beginTx()) {
       final Object idObject = properties.get("id");
@@ -106,5 +109,32 @@ public abstract class EntityFactory<T> {
       tx.success();
     }
     return t;
+  }
+
+  private void verifyOrBuildIndexes(T t) throws IllegalLabelExtractionAttemptException {
+    Set<String> indexableProperties = EntityUtils.extractIndexableProperties(t);
+    if (indexableProperties == null || indexableProperties.isEmpty()) {
+      return;
+    }
+    final Label label = DynamicLabel.label(EntityUtils.extractNodeLabel(t.getClass()));
+
+    try (Transaction tx = db.beginTx()) {
+      final Schema schema = db.schema();
+      final Iterable<IndexDefinition> indexes = schema.getIndexes(label);
+      for (IndexDefinition indexDefinition : indexes) {
+        for (String key : indexDefinition.getPropertyKeys()) {
+          if (indexableProperties.contains(key)) {
+            indexableProperties.remove(key);
+          }
+        }
+      }
+
+      for (String indexableProperty : indexableProperties) {
+        System.out.println("Creating index : " + indexableProperty);
+        schema.indexFor(label).on(indexableProperty).create();
+      }
+
+      tx.success();
+    }
   }
 }

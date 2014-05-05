@@ -2,15 +2,13 @@ package ligo.utils;
 
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.meta.Entity;
+import ligo.meta.Index;
 import ligo.meta.Transient;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -22,17 +20,7 @@ public class EntityUtils {
   private static AtomicLong atomicLong = new AtomicLong(System.currentTimeMillis());
 
   public static boolean isTransient(Method m) {
-    if (m == null || m.getAnnotations() == null) {
-      return false;
-    }
-
-    for (Annotation annotation : m.getAnnotations()) {
-      if (annotation.annotationType().equals(Transient.class)) {
-        return true;
-      }
-    }
-
-    return false;
+    return hasAnnotation(m, Transient.class);
   }
 
   public static <T> Map<String, Object> extractPersistableProperties(T t) {
@@ -109,5 +97,37 @@ public class EntityUtils {
       }
     }
 
+  }
+
+  public static <T> Set<String> extractIndexableProperties(T t) {
+    Set<String> indexableProperties = new HashSet<>();
+    for (Method method : t.getClass().getMethods()) {
+      final String methodName = method.getName();
+      if (!DEFAULT_METHODS.contains(method) && (methodName.startsWith("get") || methodName.startsWith("is")) && isIndexable(method) ) {
+        indexableProperties.add(methodName.toLowerCase().substring(methodName.startsWith("get") ? 3 : 2));
+      }
+    }
+
+    return indexableProperties;
+  }
+
+  private static boolean isIndexable(final Method m) {
+    return hasAnnotation(m, Index.class);
+  }
+
+  private static boolean hasAnnotation(final Method m, final Class annotationClass) {
+
+    if (m == null || m.getAnnotations() == null || annotationClass == null
+        || !annotationClass.isAnnotation()) {
+      return false;
+    }
+
+    for (Annotation annotation : m.getAnnotations()) {
+      if (annotation.annotationType().equals(annotationClass)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }

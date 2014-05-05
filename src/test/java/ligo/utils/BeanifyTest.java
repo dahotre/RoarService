@@ -1,7 +1,6 @@
 package ligo.utils;
 
 import me.roar.model.Lion;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.lang.reflect.InvocationTargetException;
@@ -21,13 +20,12 @@ public class BeanifyTest {
   private static final Date DT = new Date();
 
   @Test
-  @Ignore
   public void testNode() throws InvocationTargetException, IllegalAccessException {
     Beanify<Lion> beanify = new Beanify<>();
     Map<String, Object> lionProperties = new HashMap<>();
     lionProperties.put("name", LION_NAME);
-    lionProperties.put("createdAt", DT);
-    lionProperties.put("updatedAt", DT);
+    lionProperties.put("cat", DT.getTime());
+    lionProperties.put("uat", DT.getTime());
 
     Lion lion = beanify.get(lionProperties, Lion.class);
     assertNotNull(lion);
