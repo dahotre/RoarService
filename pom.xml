@@ -13,19 +13,19 @@
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j</artifactId>
-            <version>2.0.2</version>
+            <version>${neo.version}</version>
         </dependency>
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-kernel</artifactId>
-            <version>2.0.2</version>
+            <version>${neo.version}</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.11</version>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -49,7 +49,9 @@
         </plugins>
     </build>
     <properties>
+        <neo.version>2.0.3</neo.version>
         <java.version>1.7</java.version>
+        <junit.version>4.11</junit.version>
         <mvn.compiler.version>3.1</mvn.compiler.version>
     </properties>
 </project>

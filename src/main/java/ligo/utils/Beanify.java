@@ -11,6 +11,13 @@ import java.util.Map;
  */
 public class Beanify<T> {
 
+  /**
+   * Converts given map of properties into an object of Class klass
+   *
+   * @param map
+   * @param klass
+   * @return
+   */
   public T get(Map<String, Object> map, Class<T> klass) {
     if (map == null) return null;
 
@@ -24,13 +31,21 @@ public class Beanify<T> {
     return newInstance;
   }
 
-  public T get(Node n, Class<T> klass) {
-    if (n == null) return null;
+  /**
+   * Converts given Node into an object of Class klass
+   *
+   * @param node
+   * @param klass
+   * @return
+   */
+  public T get(Node node, Class<T> klass) {
+    if (node == null) return null;
 
     Map<String, Object> properties = new HashMap<>();
-    for (String key : n.getPropertyKeys()) {
-      properties.put(key, n.getProperty(key));
+    for (String key : node.getPropertyKeys()) {
+      properties.put(key, node.getProperty(key));
     }
+    properties.put("id", node.getId());
     return get(properties, klass);
   }
 }

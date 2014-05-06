@@ -8,7 +8,6 @@ import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.schema.IndexDefinition;
 import org.neo4j.graphdb.schema.Schema;
 
-import java.lang.reflect.Constructor;
 import java.util.Map;
 import java.util.Set;
 
@@ -19,45 +18,65 @@ public abstract class EntityFactory<T> {
 
   protected GraphDatabaseService db;
 
-  private Constructor<? extends T> constructor;
-
   private EntityFactory() {}
 
   public EntityFactory(Class<? extends T> impl) {
-    try {
-      this.constructor = impl.getConstructor();
-    } catch (NoSuchMethodException e) {
-      e.printStackTrace();
-    }
     this.db = new DBConfig().getDb();
   }
 
   public EntityFactory(Class<? extends T> impl, GraphDatabaseService db) {
-    try {
-      this.constructor = impl.getConstructor();
-    } catch (NoSuchMethodException e) {
-      e.printStackTrace();
-    }
     this.db = db;
   }
 
-  public T find(final String key, final String value, Class<T> klass)
+  /**
+   * Find by property key-value for the given klass
+   *
+   * @param key
+   * @param value
+   * @param klass
+   * @return
+   * @throws IllegalLabelExtractionAttemptException
+   */
+  protected T find(final String key, final Object value, Class<T> klass)
       throws IllegalLabelExtractionAttemptException {
     String labelName = EntityUtils.extractNodeLabel(klass);
+    T t = null;
     try (Transaction tx = db.beginTx();
         ResourceIterator<Node> nodes =
             db.findNodesByLabelAndProperty(DynamicLabel.label(labelName), key, value).iterator()) {
 
-      if (nodes != null && nodes.hasNext()) {
-        Node node = nodes.next();
-        return new Beanify<T>().get(node, klass);
+      if (nodes != null) {
+        t = new Beanify<T>().get(nodes.next(), klass);
       }
       tx.success();
     }
-    return null;
+    return t;
   }
 
-  public void delete(final Class<T> klass, final String key, final String value) throws IllegalLabelExtractionAttemptException {
+  /**
+   * Find a node of given class, by it's id.
+   *
+   * @param id
+   * @param klass
+   * @return
+   */
+  protected T find(final Long id, Class<T> klass) {
+    try (Transaction tx = db.beginTx()) {
+      final Node nodeById = db.getNodeById(id);
+      tx.success();
+      return new Beanify<T>().get(nodeById, klass);
+    }
+  }
+
+  /**
+   * Delete node of given class, on basis of the given property key-value
+   *
+   * @param klass
+   * @param key
+   * @param value
+   * @throws IllegalLabelExtractionAttemptException
+   */
+  protected void delete(final Class<T> klass, final String key, final String value) throws IllegalLabelExtractionAttemptException {
     try (Transaction tx = db.beginTx();
         ResourceIterator<Node> iterator =
             db.findNodesByLabelAndProperty(DynamicLabel.label(EntityUtils.extractNodeLabel(klass)), key, value).iterator()) {
@@ -78,37 +97,39 @@ public abstract class EntityFactory<T> {
    * @return
    * @throws IllegalLabelExtractionAttemptException if given class is not @Entity annotated
    */
-  public T createUnique(final T t) throws IllegalLabelExtractionAttemptException {
+  protected T createUnique(final T t) throws IllegalLabelExtractionAttemptException {
     Map<String, Object> properties = EntityUtils.extractPersistableProperties(t);
     String labelName = EntityUtils.extractNodeLabel(t.getClass());
 
     verifyOrBuildIndexes(t);
 
+    Node existingNode = null;
+
+    // 1st TX to find existing
     try (Transaction tx = db.beginTx()) {
-      final Object idObject = properties.get("id");
-      final boolean isIdBlank = idObject == null || ((String) idObject).trim().isEmpty();
-
-      final long id = isIdBlank ? EntityUtils.generateId() : (Long) idObject;
-
-      Node existingNode = null;
-      if (!isIdBlank) {
-        existingNode = db.getNodeById(id);
+      Long id;
+      if ( (id = (Long) properties.get("id")) != null) {
+        existingNode = db.getNodeById((Long) properties.get(id));
       }
-
-      if (existingNode != null) {
-        return new Beanify<T>().get(existingNode, (Class<T>) t.getClass());
-      } else {
-        Node tNode = db.createNode(DynamicLabel.label(labelName));
-
-        properties.put("id", id);
-        for (Map.Entry<String, Object> prop : properties.entrySet()) {
-          tNode.setProperty(prop.getKey(), prop.getValue());
-        }
-      }
-
       tx.success();
     }
-    return t;
+
+    // If submitted node id already exists, this will act as an update
+    if (existingNode != null) {
+      return t;
+    }
+
+    //Next TX to create new node
+    try(Transaction tx = db.beginTx()) {
+      Node newNode = db.createNode(DynamicLabel.label(labelName));
+
+      for (Map.Entry<String, Object> prop : properties.entrySet()) {
+        newNode.setProperty(prop.getKey(), prop.getValue());
+      }
+      tx.success();
+      return new Beanify<T>().get(newNode, (Class<T>) t.getClass());
+    }
+
   }
 
   private void verifyOrBuildIndexes(T t) throws IllegalLabelExtractionAttemptException {

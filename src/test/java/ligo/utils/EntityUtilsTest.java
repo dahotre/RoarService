@@ -70,7 +70,7 @@ public class EntityUtilsTest {
   @Entity(label = "someclass")
   class TestClass {
 
-    private String firstName;
+    private String firstName = "Boss";
     private boolean transientItem = false;
     private boolean nonTransientItem = true;
 

@@ -44,6 +44,10 @@ public class LionFactory extends EntityFactory<Lion> {
     return find(NAME, name, Lion.class);
   }
 
+  public Lion find(final Long id) {
+    return find(id, Lion.class);
+  }
+
   public void deleteByName(final String name) {
     try {
       delete(Lion.class, NAME, name);

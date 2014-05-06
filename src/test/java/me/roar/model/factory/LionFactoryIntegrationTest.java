@@ -45,6 +45,11 @@ public class LionFactoryIntegrationTest {
     assertTrue(foundLion.getcAt() >= startTime);
     assertTrue(foundLion.getuAt() >= startTime);
 
-    assertNotNull(foundLion.getId());
+    final Long id = foundLion.getId();
+    assertNotNull(id);
+
+    final Lion lionById = lionFactory.find(id);
+    assertNotNull(lionById);
+    assertEquals(LION_NAME, lionById.getName());
   }
 }

@@ -33,8 +33,10 @@ public class EntityUtils {
           && (methodName.startsWith("get") || methodName.startsWith("is")) && !isTransient(method)) {
         try {
           final Object value = method.invoke(t);
-          int beginIndex = methodName.startsWith("get") ? 3 : 2;
-          properties.put(methodName.substring(beginIndex).toLowerCase(), value);
+          if (value != null) {
+            int beginIndex = methodName.startsWith("get") ? 3 : 2;
+            properties.put(methodName.substring(beginIndex).toLowerCase(), value);
+          }
         } catch (IllegalAccessException | InvocationTargetException e) {
           e.printStackTrace();
         }
@@ -104,7 +106,9 @@ public class EntityUtils {
     for (Method method : t.getClass().getMethods()) {
       final String methodName = method.getName();
       if (!DEFAULT_METHODS.contains(method) && (methodName.startsWith("get") || methodName.startsWith("is")) && isIndexable(method) ) {
-        indexableProperties.add(methodName.toLowerCase().substring(methodName.startsWith("get") ? 3 : 2));
+        indexableProperties.add(methodName.toLowerCase().substring(methodName.startsWith("get") ?
+            3 :
+            2));
       }
     }
 
