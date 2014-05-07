@@ -5,11 +5,8 @@ import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.utils.Beanify;
 import ligo.utils.EntityUtils;
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.schema.IndexDefinition;
-import org.neo4j.graphdb.schema.Schema;
 
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Basic CRUD for a given Entity
@@ -37,8 +34,7 @@ public abstract class EntityFactory<T> {
    * @return
    * @throws IllegalLabelExtractionAttemptException
    */
-  protected T find(final String key, final Object value, Class<T> klass)
-      throws IllegalLabelExtractionAttemptException {
+  protected T find(final String key, final Object value, Class<T> klass) {
     String labelName = EntityUtils.extractNodeLabel(klass);
     T t = null;
     try (Transaction tx = db.beginTx();
@@ -76,7 +72,7 @@ public abstract class EntityFactory<T> {
    * @param value
    * @throws IllegalLabelExtractionAttemptException
    */
-  protected void delete(final Class<T> klass, final String key, final String value) throws IllegalLabelExtractionAttemptException {
+  protected void delete(final Class<T> klass, final String key, final String value) {
     try (Transaction tx = db.beginTx();
         ResourceIterator<Node> iterator =
             db.findNodesByLabelAndProperty(DynamicLabel.label(EntityUtils.extractNodeLabel(klass)), key, value).iterator()) {
@@ -97,11 +93,9 @@ public abstract class EntityFactory<T> {
    * @return
    * @throws IllegalLabelExtractionAttemptException if given class is not @Entity annotated
    */
-  protected T createUnique(final T t) throws IllegalLabelExtractionAttemptException {
+  protected T createUnique(final T t) {
     Map<String, Object> properties = EntityUtils.extractPersistableProperties(t);
     String labelName = EntityUtils.extractNodeLabel(t.getClass());
-
-    verifyOrBuildIndexes(t);
 
     Node existingNode = null;
 
@@ -130,32 +124,5 @@ public abstract class EntityFactory<T> {
       return new Beanify<T>().get(newNode, (Class<T>) t.getClass());
     }
 
-  }
-
-  private void verifyOrBuildIndexes(T t) throws IllegalLabelExtractionAttemptException {
-    Set<String> indexableProperties = EntityUtils.extractIndexableProperties(t);
-    if (indexableProperties == null || indexableProperties.isEmpty()) {
-      return;
-    }
-    final Label label = DynamicLabel.label(EntityUtils.extractNodeLabel(t.getClass()));
-
-    try (Transaction tx = db.beginTx()) {
-      final Schema schema = db.schema();
-      final Iterable<IndexDefinition> indexes = schema.getIndexes(label);
-      for (IndexDefinition indexDefinition : indexes) {
-        for (String key : indexDefinition.getPropertyKeys()) {
-          if (indexableProperties.contains(key)) {
-            indexableProperties.remove(key);
-          }
-        }
-      }
-
-      for (String indexableProperty : indexableProperties) {
-        System.out.println("Creating index : " + indexableProperty);
-        schema.indexFor(label).on(indexableProperty).create();
-      }
-
-      tx.success();
-    }
   }
 }

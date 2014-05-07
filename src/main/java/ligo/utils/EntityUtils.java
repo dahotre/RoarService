@@ -105,17 +105,17 @@ public class EntityUtils {
     Set<String> indexableProperties = new HashSet<>();
     for (Method method : t.getClass().getMethods()) {
       final String methodName = method.getName();
-      if (!DEFAULT_METHODS.contains(method) && (methodName.startsWith("get") || methodName.startsWith("is")) && isIndexable(method) ) {
-        indexableProperties.add(methodName.toLowerCase().substring(methodName.startsWith("get") ?
-            3 :
-            2));
+      if (!DEFAULT_METHODS.contains(method)
+          && (methodName.startsWith("get") || methodName.startsWith("is")) && isIndexable(method)) {
+        indexableProperties.add(methodName.toLowerCase().substring(
+            methodName.startsWith("get") ? 3 : 2));
       }
     }
 
     return indexableProperties;
   }
 
-  private static boolean isIndexable(final Method m) {
+  public static boolean isIndexable(final Method m) {
     return hasAnnotation(m, Index.class);
   }
 
