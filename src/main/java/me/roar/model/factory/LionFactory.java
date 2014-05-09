@@ -19,7 +19,7 @@ public class LionFactory extends EntityFactory {
   }
 
   /**
-   * Create unique node labeled Lion in the DB with the given name
+   * Create unique node labeled Lion in the DB
    *
    * @param lion Lion instance
    * @return Lion instance saved to the DB
@@ -39,6 +39,10 @@ public class LionFactory extends EntityFactory {
 
   public void deleteByName(final String name) {
     delete(Lion.class, NAME, name);
+  }
+
+  public void delete(final long id) {
+    delete(Lion.class, id);
   }
 
 }

@@ -3,10 +3,9 @@ package ligo.factory;
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.utils.Beanify;
 import ligo.utils.EntityUtils;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.ResourceIterator;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
@@ -16,6 +15,8 @@ import static org.neo4j.graphdb.DynamicLabel.label;
  * Basic CRUD for a given Entity
  */
 public abstract class EntityFactory {
+
+  private static final Logger LOG = LoggerFactory.getLogger(EntityFactory.class);
 
   protected GraphDatabaseService db;
 
@@ -56,11 +57,17 @@ public abstract class EntityFactory {
    * @return Object found in DB
    */
   protected <T> T find(final Long id, Class<T> klass) {
+    T t = null;
     try (Transaction tx = db.beginTx()) {
-      final Node nodeById = db.getNodeById(id);
+      try {
+        Node nodeById = db.getNodeById(id);
+        t = Beanify.get(nodeById, klass);
+      } catch (NotFoundException e) {
+        LOG.debug("Node {} not found for class {}", id, klass);
+      }
       tx.success();
-      return Beanify.get(nodeById, klass);
     }
+    return t;
   }
 
   /**
@@ -79,6 +86,23 @@ public abstract class EntityFactory {
         node.delete();
       }
       iterator.close();
+      tx.success();
+    }
+  }
+
+  /**
+   * Delete node
+   * @param klass Node's label has to match klass label
+   * @param id Node's id has to match id
+   */
+  protected <T> void delete(final Class<T> klass, final long id) {
+    try (Transaction tx = db.beginTx()) {
+      final Node nodeById = db.getNodeById(id);
+      if (nodeById.hasLabel(label(EntityUtils.extractNodeLabel(klass)))) {
+        nodeById.delete();
+      } else {
+        LOG.warn("Nothing to delete.");
+      }
       tx.success();
     }
   }

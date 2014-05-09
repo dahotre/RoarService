@@ -8,9 +8,7 @@ import org.junit.Test;
 
 import java.util.Date;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * Tests LionFactory
@@ -50,5 +48,9 @@ public class LionFactoryIntegrationTest {
     final Lion lionById = lionFactory.find(id);
     assertNotNull(lionById);
     assertEquals(LION_NAME, lionById.getName());
+
+    lionFactory.delete(id);
+    final Lion lion2 = lionFactory.find(id);
+    assertNull(lion2);
   }
 }
