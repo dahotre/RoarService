@@ -5,7 +5,6 @@ import com.google.common.collect.Sets;
 import ligo.meta.Entity;
 import ligo.meta.Index;
 import ligo.utils.EntityUtils;
-import org.apache.log4j.Logger;
 import org.neo4j.graphdb.DynamicLabel;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Transaction;
@@ -15,6 +14,8 @@ import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.graphdb.schema.IndexDefinition;
 import org.neo4j.helpers.collection.MapUtil;
 import org.reflections.Reflections;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -28,7 +29,7 @@ import java.util.Set;
  */
 public class DBConfig {
 
-  private static final Logger LOG = Logger.getLogger(DBConfig.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DBConfig.class);
 
   public static boolean isDbOn = false;
   private static String dbPath;
@@ -41,6 +42,7 @@ public class DBConfig {
       dbProperties.load(DBConfig.class.getClassLoader().getResourceAsStream(DB_PROP_FILE));
       dbPath = dbProperties.getProperty("dbPath");
     } catch (IOException e) {
+      LOG.error("Problem loading DB properties. Check db.properties on classpath", e);
       e.printStackTrace();
     }
     start();
@@ -65,7 +67,7 @@ public class DBConfig {
     Runtime.getRuntime().addShutdownHook(new Thread() {
       @Override
       public void run() {
-        System.out.println("DB going down. Bye!");
+        LOG.info("DB going down. Bye!");
         db.shutdown();
       }
     });
@@ -85,7 +87,7 @@ public class DBConfig {
       Reflections reflections = new Reflections(modelPackage);
       entities.addAll(reflections.getTypesAnnotatedWith(Entity.class));
     }
-    LOG.info(String.format("DB has %d entities total.", entities.size()));
+    LOG.info("DB has {} entities total.", entities.size());
 
     try (Transaction tx = db.beginTx()) {
       final Set<String> nodeIndexNames = Sets.newHashSet(db.index().nodeIndexNames());

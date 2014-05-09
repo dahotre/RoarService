@@ -3,16 +3,14 @@ package ligo.utils;
 import me.roar.model.Lion;
 import org.junit.Test;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 /**
- * TODO : Needs fixing
+ * Tests beanify's static methods
  */
 public class BeanifyTest {
 
@@ -20,15 +18,15 @@ public class BeanifyTest {
   private static final Date DT = new Date();
 
   @Test
-  public void testNode() throws InvocationTargetException, IllegalAccessException {
-    Beanify<Lion> beanify = new Beanify<>();
+  public void testPopulate() {
     Map<String, Object> lionProperties = new HashMap<>();
     lionProperties.put("name", LION_NAME);
     lionProperties.put("cat", DT.getTime());
     lionProperties.put("uat", DT.getTime());
 
-    Lion lion = beanify.get(lionProperties, Lion.class);
-    assertNotNull(lion);
+    Lion lion = new Lion();
+    Beanify.populate(lion, lionProperties);
+
     assertEquals(LION_NAME, lion.getName());
     assertEquals(DT, lion.getCreatedAt());
     assertEquals(DT, lion.getUpdatedAt());

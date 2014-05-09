@@ -18,11 +18,9 @@ public class EntityUtilsTest {
 
     final Method[] methods = TestClass.class.getMethods();
     for (Method method : methods) {
-      System.out.println("Testing " + method.getName());
       if (method.getName().equals("isTransientItem")) {
         assertTrue(EntityUtils.isTransient(method));
-      }
-      else {
+      } else {
         assertFalse(EntityUtils.isTransient(method));
       }
     }
@@ -48,20 +46,13 @@ public class EntityUtilsTest {
   }
 
   @Test
-  public void testGenerateId() {
-    final long l1 = EntityUtils.generateId();
-    final long l2 = EntityUtils.generateId();
-    assertNotEquals(l1, l2);
-  }
-
-  @Test
   public void testPopulate() {
     Map<String, Object> properites = new HashMap<>(3);
     properites.put("transientitem", true);
     properites.put("nontransientitem", false);
     properites.put("firstname", "Bobby");
     TestClass instance = new TestClass();
-    EntityUtils.populate(instance, properites);
+    Beanify.populate(instance, properites);
     assertEquals(true, instance.isTransientItem());
     assertEquals(false, instance.isNonTransientItem());
     assertEquals("Bobby", instance.getFirstName());
@@ -94,6 +85,7 @@ public class EntityUtilsTest {
     public String getFirstName() {
       return firstName;
     }
+
     public void setFirstName(String firstName) {
       this.firstName = firstName;
     }

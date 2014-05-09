@@ -4,11 +4,16 @@ import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.meta.Entity;
 import ligo.meta.Index;
 import ligo.meta.Transient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -16,7 +21,8 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class EntityUtils {
 
-  private static final List<Method> DEFAULT_METHODS = Arrays.asList(Object.class.getMethods());
+  public static final List<Method> DEFAULT_METHODS = Arrays.asList(Object.class.getMethods());
+  private static final Logger LOG = LoggerFactory.getLogger(EntityUtils.class);
   private static AtomicLong atomicLong = new AtomicLong(System.currentTimeMillis());
 
   public static boolean isTransient(Method m) {
@@ -29,8 +35,10 @@ public class EntityUtils {
     for (Method method : t.getClass().getMethods()) {
       String methodName = method.getName();
 
-      if (!DEFAULT_METHODS.contains(method)
-          && (methodName.startsWith("get") || methodName.startsWith("is")) && !isTransient(method)) {
+      if ((methodName.startsWith("get") || methodName.startsWith("is")) // is getXX or isYY
+          && !DEFAULT_METHODS.contains(method)  //is not getClass or other Object methods
+          && !isTransient(method)) {  //does not have @Transient
+
         try {
           final Object value = method.invoke(t);
           if (value != null) {
@@ -38,8 +46,10 @@ public class EntityUtils {
             properties.put(methodName.substring(beginIndex).toLowerCase(), value);
           }
         } catch (IllegalAccessException | InvocationTargetException e) {
+          LOG.error("Problem in extractPersistableProperties", e);
           e.printStackTrace();
         }
+
       }
     }
     return properties;
@@ -48,9 +58,9 @@ public class EntityUtils {
   /**
    * Extracts the label property of @Entity annotation from a class. If label value is not present,
    * then the class's simple name is returned as the default label.
-   * 
-   * @param klass
-   * @return
+   *
+   * @param klass Candidate Class
+   * @return Label name
    * @throws IllegalLabelExtractionAttemptException if the klass does not have @Entity annotation
    */
   public static String extractNodeLabel(Class klass) throws IllegalLabelExtractionAttemptException {
@@ -65,54 +75,6 @@ public class EntityUtils {
     } else {
       return nodeLabel;
     }
-  }
-
-  /**
-   * Generates long ID on basis of UUID
-   * 
-   * @return
-   */
-  public static long generateId() {
-    return System.currentTimeMillis() + atomicLong.incrementAndGet();
-  }
-
-  /**
-   * populates the instance with the given properties. All the property names are lowercase. So all
-   * the camelCase properties in the instance will be changed to lowercase for population.
-   * 
-   * @param instance
-   * @param properties
-   * @param <T>
-   */
-  public static <T> void populate(T instance, Map<String, Object> properties) {
-    for (Method method : instance.getClass().getMethods()) {
-      final String methodName = method.getName();
-      if (!DEFAULT_METHODS.contains(method) && methodName.startsWith("set")) {
-        try {
-          final String propertyName = methodName.substring("set".length()).toLowerCase();
-          if (properties.containsKey(propertyName)) {
-            method.invoke(instance, properties.get(propertyName));
-          }
-        } catch (IllegalAccessException | InvocationTargetException e) {
-          e.printStackTrace();
-        }
-      }
-    }
-
-  }
-
-  public static <T> Set<String> extractIndexableProperties(T t) {
-    Set<String> indexableProperties = new HashSet<>();
-    for (Method method : t.getClass().getMethods()) {
-      final String methodName = method.getName();
-      if (!DEFAULT_METHODS.contains(method)
-          && (methodName.startsWith("get") || methodName.startsWith("is")) && isIndexable(method)) {
-        indexableProperties.add(methodName.toLowerCase().substring(
-            methodName.startsWith("get") ? 3 : 2));
-      }
-    }
-
-    return indexableProperties;
   }
 
   public static boolean isIndexable(final Method m) {

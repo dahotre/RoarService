@@ -19,6 +19,11 @@ public class Lion extends LigoEntity {
     this.name = name;
   }
 
+  public Lion withName(String name) {
+    setName(name);
+    return this;
+  }
+
   @Index(type = IndexType.EXACT)
   public int getAge() {
     return age;
@@ -26,5 +31,10 @@ public class Lion extends LigoEntity {
 
   public void setAge(int age) {
     this.age = age;
+  }
+
+  public Lion withAge(int age) {
+    setAge(age);
+    return this;
   }
 }

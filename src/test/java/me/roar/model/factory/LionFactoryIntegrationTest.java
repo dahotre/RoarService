@@ -28,8 +28,7 @@ public class LionFactoryIntegrationTest {
   @Test
   public void testCreateUniqueLion() throws InterruptedException, IllegalLabelExtractionAttemptException {
     final long startTime = new Date().getTime();
-
-    Lion lion = lionFactory.createByName(LION_NAME);
+    Lion lion = lionFactory.create(new Lion().withName(LION_NAME).withAge(10));
     assertNotNull(lion);
     assertEquals(LION_NAME, lion.getName());
     assertTrue(lion.getCreatedAt().compareTo(new Date()) <= 0);
