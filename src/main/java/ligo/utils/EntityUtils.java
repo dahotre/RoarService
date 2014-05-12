@@ -2,7 +2,7 @@ package ligo.utils;
 
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.meta.Entity;
-import ligo.meta.Index;
+import ligo.meta.Indexed;
 import ligo.meta.Transient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,7 +78,7 @@ public class EntityUtils {
   }
 
   public static boolean isIndexable(final Method m) {
-    return hasAnnotation(m, Index.class);
+    return hasAnnotation(m, Indexed.class);
   }
 
   private static boolean hasAnnotation(final Method m, final Class annotationClass) {

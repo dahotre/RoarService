@@ -9,16 +9,16 @@ import java.util.Date;
  */
 @Entity(type = EntityType.NODE, label = "roar")
 public class Roar {
-  private long id;
+  private Long id;
   private String text;
-  private boolean isDirect;
+  private boolean isDirect = false;
   private long uAt;
 
-  public long getId() {
+  public Long getId() {
     return id;
   }
 
-  public void setId(long id) {
+  public void setId(Long id) {
     this.id = id;
   }
 
@@ -39,13 +39,18 @@ public class Roar {
     this.uAt = date.getTime();
   }
 
-  @Index(type = IndexType.FULL_TEXT, name = "roar_text_ft")
+  @Indexed(type = IndexType.FULL_TEXT, name = "roar_text_ft")
   public String getText() {
     return text;
   }
 
   public void setText(String text) {
     this.text = text;
+  }
+
+  public Roar withText(String text) {
+    setText(text);
+    return this;
   }
 
   public boolean isDirect() {

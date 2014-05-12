@@ -3,10 +3,17 @@ package me.roar.model.factory;
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import me.roar.fixture.TestConstants;
 import me.roar.model.Lion;
+import me.roar.model.Roar;
+import me.roar.utils.MyRelationTypes;
 import org.junit.Before;
 import org.junit.Test;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
 
 import java.util.Date;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -16,11 +23,14 @@ import static org.junit.Assert.*;
 public class LionFactoryIntegrationTest {
 
   private static final String LION_NAME = "Ian";
+  private static final String ROAR_TEXT = "I architects";
   private static final LionFactory lionFactory = new LionFactory(TestConstants.DB_CONFIG.getDb());
+  private static final RoarFactory roarFactory = new RoarFactory(TestConstants.DB_CONFIG.getDb());
 
   @Before
   public void setup() {
     lionFactory.deleteByName(LION_NAME);
+    roarFactory.delete(Roar.class, RoarFactory.TEXT, ROAR_TEXT);
   }
 
   @Test
@@ -52,5 +62,31 @@ public class LionFactoryIntegrationTest {
     lionFactory.delete(id);
     final Lion lion2 = lionFactory.find(id);
     assertNull(lion2);
+  }
+
+  @Test
+  public void testGetRelatives() {
+    Lion lion = lionFactory.create(new Lion().withName(LION_NAME).withAge(10));
+    assertNotNull(lion);
+    assertEquals(LION_NAME, lion.getName());
+    Roar roar = roarFactory.create(new Roar().withText(ROAR_TEXT));
+    assertNotNull(roar);
+    assertEquals(ROAR_TEXT, roar.getText());
+    GraphDatabaseService db = TestConstants.DB_CONFIG.getDb();
+    try (Transaction tx = db.beginTx()) {
+      final Node roarNode = db.getNodeById(roar.getId());
+      final Node lionNode = db.getNodeById(lion.getId());
+      lionNode.createRelationshipTo(roarNode, MyRelationTypes.ROARS);
+      tx.success();
+    }
+
+    final Set<Roar> relatives = lionFactory.getRelatives(lion, MyRelationTypes.ROARS,
+        Direction.OUTGOING);
+    assertNotNull(relatives);
+    assertTrue(relatives.iterator().hasNext());
+    final Roar foundRoar = relatives.iterator().next();
+    assertNotNull(foundRoar);
+    assertEquals(roar.getId(), foundRoar.getId());
+    assertEquals(ROAR_TEXT, foundRoar.getText());
   }
 }

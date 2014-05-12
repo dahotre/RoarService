@@ -2,6 +2,8 @@ package me.roar.model;
 
 import ligo.meta.*;
 
+import java.util.List;
+
 /**
  * Lion entity
  */
@@ -9,8 +11,9 @@ import ligo.meta.*;
 public class Lion extends LigoEntity {
   private String name;
   private int age;
+  private List<Roar> roars;
 
-  @Index(type = IndexType.FULL_TEXT, name = "lion_name_ft")
+  @Indexed(type = IndexType.FULL_TEXT, name = "lion_name_ft")
   public String getName() {
     return name;
   }
@@ -24,7 +27,7 @@ public class Lion extends LigoEntity {
     return this;
   }
 
-  @Index(type = IndexType.EXACT)
+  @Indexed(type = IndexType.EXACT)
   public int getAge() {
     return age;
   }

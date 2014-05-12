@@ -3,13 +3,12 @@ package ligo.config;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Sets;
 import ligo.meta.Entity;
-import ligo.meta.Index;
+import ligo.meta.Indexed;
 import ligo.utils.EntityUtils;
-import org.neo4j.graphdb.DynamicLabel;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
+import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.graphdb.schema.IndexDefinition;
 import org.neo4j.helpers.collection.MapUtil;
@@ -93,19 +92,21 @@ public class DBConfig {
       final Set<String> nodeIndexNames = Sets.newHashSet(db.index().nodeIndexNames());
 
       for (Class<?> entity : entities) {
-        Set<Method> indexedMethods =
-            Sets.filter(Sets.newHashSet(entity.getMethods()), new Predicate<Method>() {
+        Set<Method> indexedMethods = Sets.filter(Sets.newHashSet(entity.getMethods()),
+            new Predicate<Method>() {
               @Override
               public boolean apply(@Nullable Method method) {
-                return method.isAnnotationPresent(Index.class);
+                return method.isAnnotationPresent(Indexed.class);
               }
             });
-        final Iterable<IndexDefinition> schemaIndexes =
-            db.schema().getIndexes(DynamicLabel.label(EntityUtils.extractNodeLabel(entity)));
-        for (Method indexedMethod : indexedMethods) {
-          final Index indexAnnotation = indexedMethod.getAnnotation(Index.class);
 
-          INDEX_SWITCH: switch (indexAnnotation.type()) {
+        final Label label = DynamicLabel.label(EntityUtils.extractNodeLabel(entity));
+        final Iterable<IndexDefinition> schemaIndexes = db.schema().getIndexes(label);
+        for (Method indexedMethod : indexedMethods) {
+          final Indexed indexedAnnotation = indexedMethod.getAnnotation(Indexed.class);
+
+          INDEX_SWITCH:
+          switch (indexedAnnotation.type()) {
             case EXACT:
 
               String indexableProperty =
@@ -120,16 +121,18 @@ public class DBConfig {
                 }
               }
 
-              db.schema().indexFor(DynamicLabel.label(EntityUtils.extractNodeLabel(entity)))
-                  .on(indexableProperty).create();
+              db.schema().indexFor(label).on(indexableProperty).create();
+              LOG.info("Created index for {} on {}", label, indexableProperty);
               break;
 
             case FULL_TEXT:
-              if (nodeIndexNames.contains(indexAnnotation.name())) {
+              if (nodeIndexNames.contains(indexedAnnotation.name())) {
                 continue;
               } else {
-                db.index().forNodes(indexAnnotation.name(),
+                final Index<Node> nodeIndex = db.index().forNodes(indexedAnnotation.name(),
                     MapUtil.stringMap(IndexManager.PROVIDER, "lucene", "type", "fulltext"));
+                //TODO Make this variable accessible for further search
+                LOG.info("Init index {}", indexedAnnotation.name());
               }
               break;
           }

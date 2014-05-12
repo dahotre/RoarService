@@ -3,9 +3,13 @@ package me.roar.model.factory;
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.factory.EntityFactory;
 import me.roar.model.Lion;
+import me.roar.model.Roar;
+import me.roar.utils.MyRelationTypes;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 
 import java.util.Date;
+import java.util.Set;
 
 /**
  * CRUD ops for Lion
@@ -43,6 +47,14 @@ public class LionFactory extends EntityFactory {
 
   public void delete(final long id) {
     delete(Lion.class, id);
+  }
+
+  public Set<Roar> getRoars(final Lion lion) {
+    return getRelatives(lion, MyRelationTypes.ROARS, Direction.OUTGOING);
+  }
+
+  public void addRoar(final Lion lion, Roar... roars) {
+    addRelatives(lion, MyRelationTypes.ROARS, Direction.OUTGOING, roars);
   }
 
 }

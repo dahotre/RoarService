@@ -12,7 +12,7 @@ import java.util.Date;
  */
 public class RoarFactory extends EntityFactory {
 
-  private static final String TEXT = "text";
+  public static final String TEXT = "text";
 
   public RoarFactory(GraphDatabaseService db) {
     super(db);
