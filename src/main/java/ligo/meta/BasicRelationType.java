@@ -1,6 +1,4 @@
-package ligo.utils;
-
-import ligo.meta.RelationType;
+package ligo.meta;
 
 /**
  * Implements all the RelationType methods in a common sense way

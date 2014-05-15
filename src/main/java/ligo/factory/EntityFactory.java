@@ -10,14 +10,10 @@ import ligo.meta.RelationType;
 import ligo.utils.Beanify;
 import ligo.utils.EntityUtils;
 import org.neo4j.graphdb.*;
-import org.reflections.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,8 +25,6 @@ import static org.neo4j.graphdb.DynamicLabel.label;
 public abstract class EntityFactory {
 
   private static final Logger LOG = LoggerFactory.getLogger(EntityFactory.class);
-  private static final String ILLEGAL_GETID_MESSAGE =
-      "Instance has either none or more than 1 methods with name getId AND with modifier PUBLIC AND return type Long.";
 
   protected GraphDatabaseService db;
 
@@ -155,9 +149,10 @@ public abstract class EntityFactory {
       return t;
     }
 
+    Node newNode = null;
     //Next TX to create new node
     try (Transaction tx = db.beginTx()) {
-      Node newNode = db.createNode(label(labelName));
+      newNode = db.createNode(label(labelName));
 
       for (Map.Entry<String, Object> prop : properties.entrySet()) {
         newNode.setProperty(prop.getKey(), prop.getValue());
@@ -184,18 +179,8 @@ public abstract class EntityFactory {
       throw new IllegalReflectionOperation("Cannot get relatives from null object");
     }
 
-    final Set<Method> methodSet = ReflectionUtils.getAllMethods(entity.getClass(),
-        ReflectionUtils.withName("getId"),
-        ReflectionUtils.withModifier(Modifier.PUBLIC),
-        ReflectionUtils.withReturnType(Long.class));
-
-    if (methodSet == null || methodSet.size() != 1) {
-      throw new IllegalReflectionOperation(ILLEGAL_GETID_MESSAGE);
-    }
-
-    final Method getIdMethod = methodSet.iterator().next();
     try (Transaction tx = db.beginTx()) {
-      final Long id = (Long) getIdMethod.invoke(entity);
+      final Long id = EntityUtils.extractId(entity);
       final Node node = db.getNodeById(id);
 
       final Iterable<Relationship> relationships = node.getRelationships(relationType, direction);
@@ -212,20 +197,18 @@ public abstract class EntityFactory {
       tx.success();
 
       return relatives;
-    } catch (IllegalAccessException | InvocationTargetException e) {
-      throw new IllegalReflectionOperation("Problem getting id from getId method", e);
     }
 
   }
 
   /**
-   * TODO
+   * Adds relatives to the given entity node. The relative nodes are created if they don't exist.
    *
-   * @param entity
-   * @param relationType
-   * @param relatives
-   * @param <T>
-   * @param <V>
+   * @param entity       Given node entity
+   * @param relationType RelationType
+   * @param relatives    Relatives to be added
+   * @param <T>          Type of the given entity node
+   * @param <V>          Type of Relative
    */
   public <T, V> void addRelatives(final T entity, final RelationType relationType,
                                   final V... relatives) {
@@ -237,32 +220,29 @@ public abstract class EntityFactory {
       throw new IllegalDBOperation("Cannot add null relatives");
     }
 
-    final Set<Method> methodSet = ReflectionUtils.getMethods(entity.getClass(),
-        ReflectionUtils.withName("getId"),
-        ReflectionUtils.withModifier(Modifier.PUBLIC),
-        ReflectionUtils.withReturnType(Long.class));
+    try (Transaction tx = db.beginTx()) {
+      final Long id = EntityUtils.extractId(entity);
+      final Node node = db.getNodeById(id);
 
-    if (methodSet == null || methodSet.size() != 1) {
-      throw new IllegalReflectionOperation(ILLEGAL_GETID_MESSAGE);
+      for (V relative : relatives) {
+        Node relativeNode = null;
+        try {
+          final Long relativesId = EntityUtils.extractId(relative);
+          relativeNode = db.getNodeById(relativesId);
+        } catch (IllegalReflectionOperation e) {
+          LOG.error("Skipping relative {} due to problem in extracting its Long id", e);
+        } catch (NotFoundException nfe) {
+          LOG.debug("Node not found");
+        }
+
+        if (relativeNode == null) {
+          createUnique(relative);
+        }
+        node.createRelationshipTo(relativeNode, relationType);
+      }
+
+      tx.success();
     }
-
-    final Method getIdMethod = methodSet.iterator().next();
-
-    throw new UnsupportedOperationException("Yet to be implemented.");
-    //    try (Transaction tx = db.beginTx()) {
-    //      final Long id = (Long) getIdMethod.invoke(entity);
-    //      final Node node = db.getNodeById(id);
-    //
-    //      for (V relative : relatives) {
-    //        //TODO Fix this. then remove Unsupported exception
-    //        Node relativeNode = null;
-    //        node.createRelationshipTo(relativeNode, relationType);
-    //      }
-    //
-    //      tx.success();
-    //    } catch (IllegalAccessException | InvocationTargetException e) {
-    //      throw new IllegalReflectionOperation("Problem getting id from getId method", e);
-    //    }
 
   }
 

@@ -1,7 +1,9 @@
 package ligo.meta;
 
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 import static ligo.meta.IndexType.EXACT;
 
@@ -9,6 +11,7 @@ import static ligo.meta.IndexType.EXACT;
  * Denotes that the field should be indexed.
  */
 @Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
 public @interface Indexed {
   public IndexType type() default EXACT;
 

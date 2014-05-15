@@ -1,7 +1,7 @@
 package me.roar.utils;
 
 import ligo.meta.RelationType;
-import ligo.utils.BasicRelationType;
+import ligo.meta.BasicRelationType;
 import me.roar.model.Lion;
 import me.roar.model.Roar;
 
@@ -10,5 +10,5 @@ import me.roar.model.Roar;
  */
 public class MyRelationTypes {
   public static final RelationType ROARS =
-      new BasicRelationType<>(Lion.class, Roar.class, MyRelationNames.ROARS);
+      new BasicRelationType<>(Lion.class, Roar.class, "roars");
 }

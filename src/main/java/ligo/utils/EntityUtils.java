@@ -1,20 +1,19 @@
 package ligo.utils;
 
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
+import ligo.exceptions.IllegalReflectionOperation;
 import ligo.meta.Entity;
 import ligo.meta.Indexed;
 import ligo.meta.Transient;
+import org.reflections.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
+import java.lang.reflect.Modifier;
+import java.util.*;
 
 /**
  * Helper static methods for entities
@@ -23,7 +22,8 @@ public class EntityUtils {
 
   public static final List<Method> DEFAULT_METHODS = Arrays.asList(Object.class.getMethods());
   private static final Logger LOG = LoggerFactory.getLogger(EntityUtils.class);
-  private static AtomicLong atomicLong = new AtomicLong(System.currentTimeMillis());
+  private static final String ILLEGAL_GETID_MESSAGE =
+      "Instance has either none or more than 1 methods with name getId AND with modifier PUBLIC AND return type Long.";
 
   public static boolean isTransient(Method m) {
     return hasAnnotation(m, Transient.class);
@@ -95,5 +95,35 @@ public class EntityUtils {
     }
 
     return false;
+  }
+
+  /**
+   * Extracts the Long id from the given entity class
+   *
+   * @param entity Entity with a public Long getId() method
+   * @param <T>    Class of entity
+   * @return id
+   */
+  public static <T> Long extractId(T entity) {
+    final Set<Method> methodSet = ReflectionUtils.getAllMethods(entity.getClass(),
+        ReflectionUtils.withName("getId"),
+        ReflectionUtils.withModifier(Modifier.PUBLIC),
+        ReflectionUtils.withReturnType(Long.class));
+
+    if (methodSet == null || methodSet.size() != 1) {
+      throw new IllegalReflectionOperation(ILLEGAL_GETID_MESSAGE);
+    }
+
+    final Method method = methodSet.iterator().next();
+
+    if (method == null) {
+      throw new IllegalReflectionOperation("getId() not found");
+    }
+
+    try {
+      return (Long) method.invoke(entity);
+    } catch (IllegalAccessException | InvocationTargetException | ClassCastException e) {
+      throw new IllegalReflectionOperation("Cannot invoke getId on entity", e);
+    }
   }
 }
