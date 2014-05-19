@@ -1,6 +1,8 @@
 package ligo.config;
 
 import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Sets;
 import ligo.meta.Entity;
 import ligo.meta.Indexed;
@@ -19,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
@@ -32,6 +35,8 @@ public class DBConfig {
 
   public static boolean isDbOn = false;
   private static String dbPath;
+  private static ImmutableMap<String, Index<Node>> FULLTEXT_BY_NAME_MAP;
+  private static ImmutableMultimap<Class<?>, Index<Node>> FULLTEXT_BY_CLASS_MAP;
   private final String DB_PROP_FILE = "db.properties";
   private Properties dbProperties = new Properties();
   private GraphDatabaseService db;
@@ -50,6 +55,26 @@ public class DBConfig {
   public DBConfig(String dbPath) {
     this.dbPath = dbPath;
     start();
+  }
+
+  /**
+   * Get the full text search index by it's name
+   *
+   * @param indexName Exact name of the index.This will be found on the annotation of the get Method
+   * @return Index
+   */
+  public static Index<Node> getFullTextIndex(String indexName) {
+    return FULLTEXT_BY_NAME_MAP.get(indexName);
+  }
+
+  /**
+   * Get the full text search indexes for the given class
+   *
+   * @param klass Class
+   * @return Collection of Indexes
+   */
+  public static Collection<Index<Node>> getFullTextIndexes(Class<?> klass) {
+    return FULLTEXT_BY_CLASS_MAP.get(klass);
   }
 
   public void start() {
@@ -88,6 +113,10 @@ public class DBConfig {
     }
     LOG.info("DB has {} entities total.", entities.size());
 
+    final ImmutableMap.Builder<String, Index<Node>> fullTextIndexBuilder = ImmutableMap.builder();
+    final ImmutableMultimap.Builder<Class<?>, Index<Node>> fullTextByClassBuilder =
+        ImmutableMultimap.
+            builder();
     try (Transaction tx = db.beginTx()) {
       final Set<String> nodeIndexNames = Sets.newHashSet(db.index().nodeIndexNames());
 
@@ -126,19 +155,22 @@ public class DBConfig {
               break;
 
             case FULL_TEXT:
-              if (nodeIndexNames.contains(indexedAnnotation.name())) {
-                continue;
-              } else {
-                final Index<Node> nodeIndex = db.index().forNodes(indexedAnnotation.name(),
-                    MapUtil.stringMap(IndexManager.PROVIDER, "lucene", "type", "fulltext"));
-                //TODO Make this variable accessible for further search
-                LOG.info("Init index {}", indexedAnnotation.name());
-              }
+
+              final Index<Node> nodeIndex = db.index().forNodes(indexedAnnotation.name(),
+                  MapUtil.stringMap(IndexManager.PROVIDER, "lucene", "type", "fulltext"));
+
+              fullTextIndexBuilder.put(indexedAnnotation.name(), nodeIndex);
+              fullTextByClassBuilder.put(entity, nodeIndex);
+
+              LOG.info("Init index {}", indexedAnnotation.name());
+
               break;
           }
         }
-
+        FULLTEXT_BY_NAME_MAP = fullTextIndexBuilder.build();
+        FULLTEXT_BY_CLASS_MAP = fullTextByClassBuilder.build();
       }
+
       tx.success();
     }
   }

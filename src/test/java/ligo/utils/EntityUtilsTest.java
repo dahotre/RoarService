@@ -2,12 +2,15 @@ package ligo.utils;
 
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.meta.Entity;
+import ligo.meta.IndexType;
+import ligo.meta.Indexed;
 import ligo.meta.Transient;
 import org.junit.Test;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -58,6 +61,14 @@ public class EntityUtilsTest {
     assertEquals("Bobby", instance.getFirstName());
   }
 
+  @Test
+  public void testExtractIndexable() {
+    final Set<Method> methods = EntityUtils.extractIndexable(TestClass.class);
+    assertNotNull(methods);
+    assertEquals("only 1 method is expected to be indexed", 1, methods.size());
+    assertTrue(methods.iterator().next().isAnnotationPresent(Indexed.class));
+  }
+
   @Entity(label = "someclass")
   class TestClass {
 
@@ -82,6 +93,7 @@ public class EntityUtilsTest {
       this.nonTransientItem = nonTransientItem;
     }
 
+    @Indexed(type = IndexType.FULL_TEXT, name = "testclass_firstname_ft")
     public String getFirstName() {
       return firstName;
     }

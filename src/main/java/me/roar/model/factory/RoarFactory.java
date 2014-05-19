@@ -6,6 +6,7 @@ import me.roar.model.Roar;
 import org.neo4j.graphdb.GraphDatabaseService;
 
 import java.util.Date;
+import java.util.Set;
 
 /**
  * CRUD ops for Roar
@@ -29,7 +30,7 @@ public class RoarFactory extends EntityFactory {
     return createUnique(roar);
   }
 
-  public Roar findByText(final String text) throws IllegalLabelExtractionAttemptException {
+  public Set<Roar> findByText(final String text) throws IllegalLabelExtractionAttemptException {
     return find(TEXT, text, Roar.class);
   }
 

@@ -1,19 +1,28 @@
 package ligo.factory;
 
 import com.google.common.base.Function;
+import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import ligo.config.DBConfig;
 import ligo.exceptions.IllegalDBOperation;
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.exceptions.IllegalReflectionOperation;
+import ligo.meta.IndexType;
+import ligo.meta.Indexed;
 import ligo.meta.RelationType;
 import ligo.utils.Beanify;
 import ligo.utils.EntityUtils;
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.index.Index;
+import org.neo4j.graphdb.index.IndexHits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import java.lang.reflect.Method;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
@@ -42,19 +51,54 @@ public abstract class EntityFactory {
    * @return Object found in DB
    * @throws IllegalLabelExtractionAttemptException
    */
-  protected <T> T find(final String key, final Object value, Class<T> klass) {
+  protected <T> Set<T> find(final String key, final Object value, Class<T> klass) {
     String labelName = EntityUtils.extractNodeLabel(klass);
-    T t = null;
+    Set<T> tSet = null;
     try (Transaction tx = db.beginTx();
          ResourceIterator<Node> nodes =
              db.findNodesByLabelAndProperty(label(labelName), key, value).iterator()) {
 
-      if (nodes != null) {
-        t = Beanify.get(nodes.next(), klass);
+      while (nodes != null && nodes.hasNext()) {
+        if (tSet == null) {
+          tSet = Sets.newHashSet();
+        }
+        tSet.add(Beanify.get(nodes.next(), klass));
+
       }
       tx.success();
     }
-    return t;
+    return tSet;
+  }
+
+
+  /**
+   * Searches for the given query in the specified index name
+   *
+   * @param indexName Index name to be leveraged
+   * @param key Name of field to search
+   * @param query Query string
+   * @param klass Class of the expected result
+   * @param <T> Class of the expected result
+   * @return Set of objects that match the search criteria
+   */
+  protected <T> Set<T> search(final String indexName, final String key, final String query, Class<T> klass) {
+    if (Strings.isNullOrEmpty(indexName) || Strings.isNullOrEmpty(query) || klass == null) {
+      return null;
+    }
+    Set<T> tSet = null;
+
+    try (Transaction tx = db.beginTx()) {
+      final Index<Node> fullTextIndex = DBConfig.getFullTextIndex(indexName);
+      final IndexHits<Node> hits = fullTextIndex.query(key, query);
+      for (Node hit : hits) {
+        if (tSet == null) {
+          tSet = Sets.newHashSet();
+        }
+        tSet.add(Beanify.get(hit, klass));
+      }
+      tx.success();
+    }
+    return tSet;
   }
 
   /**
@@ -86,6 +130,8 @@ public abstract class EntityFactory {
    * @param value value
    */
   public <T> void delete(final Class<T> klass, final String key, final String value) {
+    final Collection<Index<Node>> fullTextIndexes = DBConfig.getFullTextIndexes(klass);
+
     try (Transaction tx = db.beginTx();
          ResourceIterator<Node> iterator =
              db.findNodesByLabelAndProperty(label(EntityUtils.extractNodeLabel(klass)), key, value).iterator()) {
@@ -93,6 +139,9 @@ public abstract class EntityFactory {
         final Node node = iterator.next();
         for (Relationship relationship : node.getRelationships()) {
           relationship.delete();
+        }
+        for (Index<Node> fullTextIndex : fullTextIndexes) {
+          fullTextIndex.remove(node);
         }
         node.delete();
       }
@@ -108,11 +157,16 @@ public abstract class EntityFactory {
    * @param id    Node's id has to match id
    */
   public <T> void delete(final Class<T> klass, final long id) {
+    final Collection<Index<Node>> fullTextIndexes = DBConfig.getFullTextIndexes(klass);
+
     try (Transaction tx = db.beginTx()) {
       final Node nodeById = db.getNodeById(id);
       if (nodeById.hasLabel(label(EntityUtils.extractNodeLabel(klass)))) {
         for (Relationship relationship : nodeById.getRelationships()) {
           relationship.delete();
+        }
+        for (Index<Node> fullTextIndex : fullTextIndexes) {
+          fullTextIndex.remove(nodeById);
         }
         nodeById.delete();
       } else {
@@ -144,9 +198,22 @@ public abstract class EntityFactory {
       tx.success();
     }
 
-    // If submitted node id already exists, this will act as an update
+    // If submitted node id already exists, it will be returned
     if (existingNode != null) {
       return t;
+    }
+
+    //Getting ready for node creation. First find full text indexes
+    Map<String, String> keyToIndexNameMap = Maps.newHashMap();
+    final Set<Method> indexable = EntityUtils.extractIndexable(t.getClass());
+    if (indexable != null) {
+      for (Method method : indexable) {
+        final Indexed indexed = method.getAnnotation(Indexed.class);
+        if (indexed.type().equals(IndexType.FULL_TEXT)) {
+          int beginIndex = method.getName().startsWith("get") ? 3 : 2;
+          keyToIndexNameMap.put(method.getName().substring(beginIndex).toLowerCase(), indexed.name());
+        }
+      }
     }
 
     Node newNode = null;
@@ -156,7 +223,14 @@ public abstract class EntityFactory {
 
       for (Map.Entry<String, Object> prop : properties.entrySet()) {
         newNode.setProperty(prop.getKey(), prop.getValue());
+        if (keyToIndexNameMap.containsKey(prop.getKey())) {
+          final Index<Node> fullTextIndex =
+              DBConfig.getFullTextIndex(keyToIndexNameMap.get(prop.getKey()));
+          fullTextIndex.add(newNode, prop.getKey(), prop.getValue());
+        }
       }
+
+
       tx.success();
       return Beanify.get(newNode, (Class<T>) t.getClass());
     }

@@ -126,4 +126,15 @@ public class EntityUtils {
       throw new IllegalReflectionOperation("Cannot invoke getId on entity", e);
     }
   }
+
+  /**
+   * Extract indexable getters for a given Class
+   *
+   * @param klass Class
+   * @return Set of methods
+   */
+  public static Set<Method> extractIndexable(Class<?> klass) {
+    return ReflectionUtils.getAllMethods(klass, ReflectionUtils.withAnnotation(Indexed.class),
+        ReflectionUtils.withModifier(Modifier.PUBLIC));
+  }
 }

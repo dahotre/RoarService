@@ -43,7 +43,9 @@ public class LionFactoryIntegrationTest {
 
     final long currentTime = new Date().getTime();
     Thread.sleep(1000l);
-    final Lion foundLion = lionFactory.findByName(LION_NAME);
+    final Set<Lion> lions = lionFactory.findByName(LION_NAME);
+    assertNotNull(lions);
+    final Lion foundLion = lions.iterator().next();
     assertNotNull(foundLion);
     assertEquals(LION_NAME, foundLion.getName());
 
@@ -58,6 +60,13 @@ public class LionFactoryIntegrationTest {
     final Lion lionById = lionFactory.find(id);
     assertNotNull(lionById);
     assertEquals(LION_NAME, lionById.getName());
+
+    final Set<Lion> searchedByName = lionFactory.searchByName(LION_NAME);
+    assertNotNull(searchedByName);
+    final Lion lionBySearch = searchedByName.iterator().next();
+    assertNotNull(lionBySearch);
+    assertEquals(id, lionBySearch.getId());
+    assertEquals(LION_NAME, lionBySearch.getName());
 
     lionFactory.delete(id);
     final Lion lion2 = lionFactory.find(id);

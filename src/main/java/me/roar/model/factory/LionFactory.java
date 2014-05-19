@@ -1,6 +1,5 @@
 package me.roar.model.factory;
 
-import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.factory.EntityFactory;
 import me.roar.model.Lion;
 import me.roar.model.Roar;
@@ -33,8 +32,12 @@ public class LionFactory extends EntityFactory {
     return createUnique(lion);
   }
 
-  public Lion findByName(final String name) throws IllegalLabelExtractionAttemptException {
+  public Set<Lion> findByName(final String name) {
     return find(NAME, name, Lion.class);
+  }
+
+  public Set<Lion> searchByName(final String name) {
+    return search("lion_name_ft", NAME, name, Lion.class);
   }
 
   public Lion find(final Long id) {
