@@ -1,5 +1,6 @@
 package me.roar.model.factory;
 
+import com.google.common.collect.Sets;
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import me.roar.fixture.TestConstants;
 import me.roar.model.Lion;
@@ -23,14 +24,16 @@ import static org.junit.Assert.*;
 public class LionFactoryIntegrationTest {
 
   private static final String LION_NAME = "Ian";
-  private static final String ROAR_TEXT = "I architects";
+  private static final String ROAR_TEXT_1 = "I architects";
+  private static final String ROAR_TEXT_2 = "I chief";
   private static final LionFactory lionFactory = new LionFactory(TestConstants.DB_CONFIG.getDb());
   private static final RoarFactory roarFactory = new RoarFactory(TestConstants.DB_CONFIG.getDb());
 
   @Before
   public void setup() {
     lionFactory.deleteByName(LION_NAME);
-    roarFactory.delete(Roar.class, RoarFactory.TEXT, ROAR_TEXT);
+    roarFactory.delete(Roar.class, RoarFactory.TEXT, ROAR_TEXT_1);
+    roarFactory.delete(Roar.class, RoarFactory.TEXT, ROAR_TEXT_2);
   }
 
   @Test
@@ -78,9 +81,9 @@ public class LionFactoryIntegrationTest {
     Lion lion = lionFactory.create(new Lion().withName(LION_NAME).withAge(10));
     assertNotNull(lion);
     assertEquals(LION_NAME, lion.getName());
-    Roar roar = roarFactory.create(new Roar().withText(ROAR_TEXT));
+    Roar roar = roarFactory.create(new Roar().withText(ROAR_TEXT_1));
     assertNotNull(roar);
-    assertEquals(ROAR_TEXT, roar.getText());
+    assertEquals(ROAR_TEXT_1, roar.getText());
     GraphDatabaseService db = TestConstants.DB_CONFIG.getDb();
     try (Transaction tx = db.beginTx()) {
       final Node roarNode = db.getNodeById(roar.getId());
@@ -96,6 +99,36 @@ public class LionFactoryIntegrationTest {
     final Roar foundRoar = relatives.iterator().next();
     assertNotNull(foundRoar);
     assertEquals(roar.getId(), foundRoar.getId());
-    assertEquals(ROAR_TEXT, foundRoar.getText());
+    assertEquals(ROAR_TEXT_1, foundRoar.getText());
+  }
+
+  @Test
+  public void testAddRelative() {
+    Lion lion = lionFactory.create(new Lion().withName(LION_NAME).withAge(10));
+    Roar roar = new Roar().withText(ROAR_TEXT_1);
+    lionFactory.addRoar(lion, roar);
+    final Set<Roar> roars = lionFactory.getRoars(lion);
+    assertNotNull(roars);
+    assertEquals("expecting 1 roar", 1, roars.size());
+    Roar roarFromRelation = roars.iterator().next();
+    assertEquals(ROAR_TEXT_1, roarFromRelation.getText());
+    Roar roarFromSearch = roarFactory.findByText(ROAR_TEXT_1).iterator().next();
+    assertNotNull(roarFromSearch);
+    assertEquals(roarFromRelation.getId(), roarFromSearch.getId());
+  }
+
+  @Test
+  public void testAddMultipleRelatives() {
+    final Lion lion = lionFactory.create(new Lion().withName(LION_NAME).withAge(10));
+    final Roar roar1 = roarFactory.create(new Roar().withText(ROAR_TEXT_1));
+
+    lionFactory.addRoar(lion, roar1, new Roar().withText(ROAR_TEXT_2));
+
+    Set<Roar> roars = lionFactory.getRoars(lion);
+    assertNotNull(roars);
+    assertEquals("Expecting 2 roars", 2, roars.size());
+    for (Roar roar : roars) {
+      assertTrue(Sets.newHashSet(ROAR_TEXT_1, ROAR_TEXT_2).contains(roar.getText()));
+    }
   }
 }

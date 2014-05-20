@@ -1,5 +1,6 @@
 package me.roar.model;
 
+import com.google.gson.Gson;
 import ligo.meta.*;
 
 import java.util.List;
@@ -39,5 +40,10 @@ public class Lion extends LigoEntity {
   public Lion withAge(int age) {
     setAge(age);
     return this;
+  }
+
+  @Override
+  public String toString() {
+    return new Gson().toJson(this);
   }
 }

@@ -57,7 +57,7 @@ public class LionFactory extends EntityFactory {
   }
 
   public void addRoar(final Lion lion, Roar... roars) {
-    addRelatives(lion, MyRelationTypes.ROARS, Direction.OUTGOING, roars);
+    addRelatives(lion, MyRelationTypes.ROARS, roars);
   }
 
 }

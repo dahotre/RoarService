@@ -1,5 +1,6 @@
 package me.roar.model;
 
+import com.google.gson.Gson;
 import ligo.meta.*;
 
 import java.util.Date;
@@ -59,5 +60,10 @@ public class Roar {
 
   public void setDirect(boolean isDirect) {
     this.isDirect = isDirect;
+  }
+
+  @Override
+  public String toString() {
+    return new Gson().toJson(this);
   }
 }

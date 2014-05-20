@@ -177,13 +177,14 @@ public abstract class EntityFactory {
   }
 
   /**
-   * If an object with the same Id exists, it will be returned. Else the given instance will be
-   * persisted.
+   * If an object with the same Id exists, it's node representation will be returned.
+   * Else the given instance will be persisted and the resultant node will be returned.
    *
-   * @param t Instance of Class to be created
-   * @return Created instance of class T
+   * @param t Entity to be persisted
+   * @param <T> Type of given entity
+   * @return Node representation of Object
    */
-  protected <T> T createUnique(final T t) {
+  protected <T> Node createUniqueNode(final T t) {
     Map<String, Object> properties = EntityUtils.extractPersistableProperties(t);
     String labelName = EntityUtils.extractNodeLabel(t.getClass());
 
@@ -200,7 +201,7 @@ public abstract class EntityFactory {
 
     // If submitted node id already exists, it will be returned
     if (existingNode != null) {
-      return t;
+      return existingNode;
     }
 
     //Getting ready for node creation. First find full text indexes
@@ -232,9 +233,24 @@ public abstract class EntityFactory {
 
 
       tx.success();
-      return Beanify.get(newNode, (Class<T>) t.getClass());
+      return newNode;
     }
 
+  }
+
+  /**
+   * If an object with the same Id exists, it will be returned. Else the given instance will be
+   * persisted.
+   *
+   * @param t Instance of Class to be created
+   * @return Created instance of class T
+   */
+  protected <T> T createUnique(final T t) {
+    try (Transaction tx = db.beginTx()) {
+      T persistedT = Beanify.get(createUniqueNode(t), (Class<T>) t.getClass());
+      tx.success();
+      return persistedT;
+    }
   }
 
   /**
@@ -302,7 +318,12 @@ public abstract class EntityFactory {
         Node relativeNode = null;
         try {
           final Long relativesId = EntityUtils.extractId(relative);
-          relativeNode = db.getNodeById(relativesId);
+
+          if (relativesId == null) {
+            relativeNode = createUniqueNode(relative);
+          } else {
+            relativeNode = db.getNodeById(relativesId);
+          }
         } catch (IllegalReflectionOperation e) {
           LOG.error("Skipping relative {} due to problem in extracting its Long id", e);
         } catch (NotFoundException nfe) {
@@ -310,7 +331,8 @@ public abstract class EntityFactory {
         }
 
         if (relativeNode == null) {
-          createUnique(relative);
+          throw new IllegalDBOperation(
+              "The relative node is null. Here is the relative object : " + relative);
         }
         node.createRelationshipTo(relativeNode, relationType);
       }
