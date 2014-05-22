@@ -1,4 +1,4 @@
-package me.roar.model;
+package me.roar.model.node;
 
 import com.google.gson.Gson;
 import ligo.meta.*;

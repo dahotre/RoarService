@@ -1,6 +1,6 @@
 package ligo.utils;
 
-import me.roar.model.Lion;
+import me.roar.model.node.Lion;
 import org.junit.Test;
 
 import java.util.Date;

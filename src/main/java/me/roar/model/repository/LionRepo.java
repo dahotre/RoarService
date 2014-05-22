@@ -1,10 +1,9 @@
-package me.roar.model.factory;
+package me.roar.model.repository;
 
-import ligo.factory.EntityFactory;
-import me.roar.model.Lion;
-import me.roar.model.Roar;
-import me.roar.utils.MyRelationTypes;
-import org.neo4j.graphdb.Direction;
+import ligo.repository.EntityRepo;
+import me.roar.model.node.Lion;
+import me.roar.model.node.Roar;
+import me.roar.model.relationship.Roars;
 import org.neo4j.graphdb.GraphDatabaseService;
 
 import java.util.Date;
@@ -13,11 +12,11 @@ import java.util.Set;
 /**
  * CRUD ops for Lion
  */
-public class LionFactory extends EntityFactory {
+public class LionRepo extends EntityRepo {
 
   private static final String NAME = "name";
 
-  public LionFactory(GraphDatabaseService db) {
+  public LionRepo(GraphDatabaseService db) {
     super(db);
   }
 
@@ -53,11 +52,11 @@ public class LionFactory extends EntityFactory {
   }
 
   public Set<Roar> getRoars(final Lion lion) {
-    return getRelatives(lion, MyRelationTypes.ROARS, Direction.OUTGOING);
+    return getRelatives(lion, new Roars());
   }
 
   public void addRoar(final Lion lion, Roar... roars) {
-    addRelatives(lion, MyRelationTypes.ROARS, roars);
+    addRelatives(lion, new Roars(), roars);
   }
 
 }

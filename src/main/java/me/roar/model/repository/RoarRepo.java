@@ -1,8 +1,8 @@
-package me.roar.model.factory;
+package me.roar.model.repository;
 
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
-import ligo.factory.EntityFactory;
-import me.roar.model.Roar;
+import ligo.repository.EntityRepo;
+import me.roar.model.node.Roar;
 import org.neo4j.graphdb.GraphDatabaseService;
 
 import java.util.Date;
@@ -11,11 +11,11 @@ import java.util.Set;
 /**
  * CRUD ops for Roar
  */
-public class RoarFactory extends EntityFactory {
+public class RoarRepo extends EntityRepo {
 
   public static final String TEXT = "text";
 
-  public RoarFactory(GraphDatabaseService db) {
+  public RoarRepo(GraphDatabaseService db) {
     super(db);
   }
 

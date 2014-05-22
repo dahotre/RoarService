@@ -1,4 +1,4 @@
-package ligo.factory;
+package ligo.repository;
 
 import com.google.common.base.Function;
 import com.google.common.base.Strings;
@@ -9,9 +9,9 @@ import ligo.config.DBConfig;
 import ligo.exceptions.IllegalDBOperation;
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.exceptions.IllegalReflectionOperation;
+import ligo.meta.BaseRelationship;
 import ligo.meta.IndexType;
 import ligo.meta.Indexed;
-import ligo.meta.RelationType;
 import ligo.utils.Beanify;
 import ligo.utils.EntityUtils;
 import org.neo4j.graphdb.*;
@@ -31,13 +31,13 @@ import static org.neo4j.graphdb.DynamicLabel.label;
 /**
  * Basic CRUD for a given Entity
  */
-public abstract class EntityFactory {
+public abstract class EntityRepo {
 
-  private static final Logger LOG = LoggerFactory.getLogger(EntityFactory.class);
+  private static final Logger LOG = LoggerFactory.getLogger(EntityRepo.class);
 
   protected GraphDatabaseService db;
 
-  public EntityFactory(GraphDatabaseService db) {
+  public EntityRepo(GraphDatabaseService db) {
     this.db = db;
   }
 
@@ -254,17 +254,13 @@ public abstract class EntityFactory {
   }
 
   /**
-   * Fetch relatives of the given node that belong to the given RelationType and Direction
+   * Fetch relatives of the given node that satisfy the given relationship constraints
    *
    * @param entity       Given node entity
-   * @param relationType RelationType
-   * @param direction    Should be either OUTGOING, INCOMING, or BOTH. OUTGOING is the most common.
-   * @param <T>          Type of the given entity node
-   * @param <V>          Type of Relative
+   * @param relationship Given relationship
    * @return Set of relatives
    */
-  public <T, V> Set<V> getRelatives(final T entity, final RelationType relationType,
-                                    final Direction direction) {
+  public <T, V> Set<V> getRelatives(final T entity, final BaseRelationship<T, V> relationship) {
     if (entity == null) {
       throw new IllegalReflectionOperation("Cannot get relatives from null object");
     }
@@ -273,13 +269,14 @@ public abstract class EntityFactory {
       final Long id = EntityUtils.extractId(entity);
       final Node node = db.getNodeById(id);
 
-      final Iterable<Relationship> relationships = node.getRelationships(relationType, direction);
+      final Iterable<Relationship> dbRelationships = node.getRelationships(
+          relationship.getRelationType(), relationship.getDirection());
       final Set<V> relatives = Sets.newHashSet(
-          Iterables.transform(relationships, new Function<Relationship, V>() {
+          Iterables.transform(dbRelationships, new Function<Relationship, V>() {
             @Override
-            public V apply(@Nullable Relationship relationship) {
-              return Beanify.get(relationship.getOtherNode(node),
-                  (Class<V>) relationType.getOtherNodeType(entity.getClass()));
+            public V apply(@Nullable Relationship dbRelationship) {
+              return Beanify.get(dbRelationship.getOtherNode(node),
+                  (Class<V>) relationship.getRelationType().getOtherNodeType(entity.getClass()));
             }
           })
       );
@@ -293,14 +290,11 @@ public abstract class EntityFactory {
 
   /**
    * Adds relatives to the given entity node. The relative nodes are created if they don't exist.
-   *
    * @param entity       Given node entity
-   * @param relationType RelationType
+   * @param relationship Relationship between entity and relatives
    * @param relatives    Relatives to be added
-   * @param <T>          Type of the given entity node
-   * @param <V>          Type of Relative
    */
-  public <T, V> void addRelatives(final T entity, final RelationType relationType,
+  public <T, V> void addRelatives(final T entity, BaseRelationship<T, V> relationship,
                                   final V... relatives) {
     if (entity == null) {
       throw new IllegalReflectionOperation("Cannot get relatives from null object");
@@ -334,7 +328,13 @@ public abstract class EntityFactory {
           throw new IllegalDBOperation(
               "The relative node is null. Here is the relative object : " + relative);
         }
-        node.createRelationshipTo(relativeNode, relationType);
+        Relationship persistedRelationship =
+            node.createRelationshipTo(relativeNode, relationship.getRelationType());
+        if (relationship.getProperties() != null) {
+          for (Map.Entry<String, ? extends Object> entry : relationship.getProperties().entrySet()) {
+            persistedRelationship.setProperty(entry.getKey(), entry.getValue());
+          }
+        }
       }
 
       tx.success();
