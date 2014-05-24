@@ -1,6 +1,5 @@
 package ligo.config;
 
-import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Sets;
@@ -14,13 +13,13 @@ import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.graphdb.schema.IndexDefinition;
 import org.neo4j.helpers.collection.MapUtil;
+import org.reflections.ReflectionUtils;
 import org.reflections.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
-import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Properties;
@@ -47,7 +46,6 @@ public class DBConfig {
       dbPath = dbProperties.getProperty("dbPath");
     } catch (IOException e) {
       LOG.error("Problem loading DB properties. Check db.properties on classpath", e);
-      e.printStackTrace();
     }
     start();
   }
@@ -60,7 +58,7 @@ public class DBConfig {
   /**
    * Get the full text search index by it's name
    *
-   * @param indexName Exact name of the index.This will be found on the annotation of the get Method
+   * @param indexName Exact name of the index.This will be found on the @Indexed annotation
    * @return Index
    */
   public static Index<Node> getFullTextIndex(String indexName) {
@@ -121,26 +119,19 @@ public class DBConfig {
       final Set<String> nodeIndexNames = Sets.newHashSet(db.index().nodeIndexNames());
 
       for (Class<?> entity : entities) {
-        Set<Method> indexedMethods = Sets.filter(Sets.newHashSet(entity.getMethods()),
-            new Predicate<Method>() {
-              @Override
-              public boolean apply(@Nullable Method method) {
-                return method.isAnnotationPresent(Indexed.class);
-              }
-            });
+        Set<Field> indexedFields = ReflectionUtils.
+            getAllFields(entity, ReflectionUtils.withAnnotation(Indexed.class));
 
         final Label label = DynamicLabel.label(EntityUtils.extractNodeLabel(entity));
         final Iterable<IndexDefinition> schemaIndexes = db.schema().getIndexes(label);
-        for (Method indexedMethod : indexedMethods) {
-          final Indexed indexedAnnotation = indexedMethod.getAnnotation(Indexed.class);
+        for (Field indexedField : indexedFields) {
+          final Indexed indexedAnnotation = indexedField.getAnnotation(Indexed.class);
 
           INDEX_SWITCH:
           switch (indexedAnnotation.type()) {
             case EXACT:
 
-              String indexableProperty =
-                  indexedMethod.getName().toLowerCase()
-                      .substring(indexedMethod.getName().startsWith("get") ? 3 : 2);
+              String indexableProperty = indexedField.getName().toLowerCase();
 
               for (IndexDefinition schemaIndex : schemaIndexes) {
                 if (schemaIndex.getPropertyKeys().iterator().hasNext()

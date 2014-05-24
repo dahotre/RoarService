@@ -1,57 +1,51 @@
 package ligo.utils;
 
+import com.google.common.collect.Maps;
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.exceptions.IllegalReflectionOperation;
 import ligo.meta.Entity;
+import ligo.meta.Id;
 import ligo.meta.Indexed;
-import ligo.meta.Transient;
+import ligo.meta.Property;
 import org.reflections.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.*;
+import java.lang.reflect.Field;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Helper static methods for entities
  */
 public class EntityUtils {
 
-  public static final List<Method> DEFAULT_METHODS = Arrays.asList(Object.class.getMethods());
   private static final Logger LOG = LoggerFactory.getLogger(EntityUtils.class);
-  private static final String ILLEGAL_GETID_MESSAGE =
-      "Instance has either none or more than 1 methods with name getId AND with modifier PUBLIC AND return type Long.";
 
-  public static boolean isTransient(Method m) {
-    return hasAnnotation(m, Transient.class);
-  }
-
+  /**
+   * Extracts keys and values of all the @Property annotated fields
+   *
+   * @param t   Instance of the entity
+   * @param <T> Type of entity
+   * @return Map of key, value of fields
+   */
   public static <T> Map<String, Object> extractPersistableProperties(T t) {
+    Set<Field> allProperties =
+        ReflectionUtils.getAllFields(t.getClass(), ReflectionUtils.withAnnotation(Property.class));
+    Map<String, Object> properties = null;
 
-    Map<String, Object> properties = new HashMap<>(5);
-    for (Method method : t.getClass().getMethods()) {
-      String methodName = method.getName();
-
-      if ((methodName.startsWith("get") || methodName.startsWith("is")) // is getXX or isYY
-          && !DEFAULT_METHODS.contains(method)  //is not getClass or other Object methods
-          && !isTransient(method)) {  //does not have @Transient
-
-        try {
-          final Object value = method.invoke(t);
-          if (value != null) {
-            int beginIndex = methodName.startsWith("get") ? 3 : 2;
-            properties.put(methodName.substring(beginIndex).toLowerCase(), value);
-          }
-        } catch (IllegalAccessException | InvocationTargetException e) {
-          LOG.error("Problem in extractPersistableProperties", e);
-          e.printStackTrace();
+    for (Field property : allProperties) {
+      property.setAccessible(true);
+      try {
+        if (properties == null) {
+          properties = Maps.newHashMap();
         }
-
+        properties.put(property.getName().toLowerCase(), property.get(t));
+      } catch (IllegalAccessException e) {
+        new IllegalReflectionOperation(e);
       }
     }
+
     return properties;
   }
 
@@ -77,64 +71,36 @@ public class EntityUtils {
     }
   }
 
-  public static boolean isIndexable(final Method m) {
-    return hasAnnotation(m, Indexed.class);
-  }
-
-  private static boolean hasAnnotation(final Method m, final Class annotationClass) {
-
-    if (m == null || m.getAnnotations() == null || annotationClass == null
-        || !annotationClass.isAnnotation()) {
-      return false;
-    }
-
-    for (Annotation annotation : m.getAnnotations()) {
-      if (annotation.annotationType().equals(annotationClass)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
   /**
    * Extracts the Long id from the given entity class
    *
-   * @param entity Entity with a public Long getId() method
+   * @param entity Entity with a @Id Long field
    * @param <T>    Class of entity
    * @return id
    */
   public static <T> Long extractId(T entity) {
-    final Set<Method> methodSet = ReflectionUtils.getAllMethods(entity.getClass(),
-        ReflectionUtils.withName("getId"),
-        ReflectionUtils.withModifier(Modifier.PUBLIC),
-        ReflectionUtils.withReturnType(Long.class));
-
-    if (methodSet == null || methodSet.size() != 1) {
-      throw new IllegalReflectionOperation(ILLEGAL_GETID_MESSAGE);
+    Set<Field> allIdFields =
+        ReflectionUtils.getAllFields(entity.getClass(), ReflectionUtils.withAnnotation(Id.class));
+    if (allIdFields == null || allIdFields.size() != 1) {
+      throw new IllegalReflectionOperation("@Id should be used exactly once for a class : "
+          + entity.getClass());
     }
-
-    final Method method = methodSet.iterator().next();
-
-    if (method == null) {
-      throw new IllegalReflectionOperation("getId() not found");
-    }
-
+    Field idField = allIdFields.iterator().next();
+    idField.setAccessible(true);
     try {
-      return (Long) method.invoke(entity);
-    } catch (IllegalAccessException | InvocationTargetException | ClassCastException e) {
-      throw new IllegalReflectionOperation("Cannot invoke getId on entity", e);
+      return ((Long) idField.get(entity));
+    } catch (IllegalAccessException e) {
+      throw new IllegalReflectionOperation("@Id supports only Long");
     }
   }
 
   /**
-   * Extract indexable getters for a given Class
+   * Extract indexable fields for a given Class
    *
    * @param klass Class
-   * @return Set of methods
+   * @return set of fields
    */
-  public static Set<Method> extractIndexable(Class<?> klass) {
-    return ReflectionUtils.getAllMethods(klass, ReflectionUtils.withAnnotation(Indexed.class),
-        ReflectionUtils.withModifier(Modifier.PUBLIC));
+  public static Set<Field> extractIndexable(Class<?> klass) {
+    return ReflectionUtils.getAllFields(klass, ReflectionUtils.withAnnotation(Indexed.class));
   }
 }

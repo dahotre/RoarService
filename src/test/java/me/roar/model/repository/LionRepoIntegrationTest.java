@@ -87,11 +87,11 @@ public class LionRepoIntegrationTest {
     try (Transaction tx = db.beginTx()) {
       final Node roarNode = db.getNodeById(roar.getId());
       final Node lionNode = db.getNodeById(lion.getId());
-      lionNode.createRelationshipTo(roarNode, new Roars().getRelationType());
+      lionNode.createRelationshipTo(roarNode, Roars.newInstance().getRelationType());
       tx.success();
     }
 
-    final Set<Roar> relatives = LION_REPO.getRelatives(lion, new Roars());
+    final Set<Roar> relatives = LION_REPO.getRelatives(lion, Roars.newInstance());
     assertNotNull(relatives);
     assertTrue(relatives.iterator().hasNext());
     final Roar foundRoar = relatives.iterator().next();

@@ -10,9 +10,14 @@ import java.util.Date;
  */
 @Entity(type = EntityType.NODE, label = "roar")
 public class Roar {
+  @Id
   private Long id;
+  @Property
+  @Indexed(type = IndexType.FULL_TEXT, name = "roar_text_ft")
   private String text;
+  @Property
   private boolean isDirect = false;
+  @Property
   private long uAt;
 
   public Long getId() {
@@ -31,7 +36,6 @@ public class Roar {
     this.uAt = uAt;
   }
 
-  @Transient
   public Date getUpdatedAt() {
     return new Date(uAt);
   }
@@ -40,7 +44,6 @@ public class Roar {
     this.uAt = date.getTime();
   }
 
-  @Indexed(type = IndexType.FULL_TEXT, name = "roar_text_ft")
   public String getText() {
     return text;
   }

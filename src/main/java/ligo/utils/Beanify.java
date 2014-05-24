@@ -5,10 +5,12 @@ import org.neo4j.graphdb.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.reflections.ReflectionUtils.getAllFields;
 
 /**
  * Converts Node/Relations to Objects
@@ -24,10 +26,10 @@ public class Beanify {
   /**
    * Converts given Node into an object of Class klass
    *
-   * @param node Neo4j Node
+   * @param node  Neo4j Node
    * @param klass Class
    * @return populated instance of type klass
-   * @exception ligo.exceptions.IllegalReflectionOperation
+   * @throws ligo.exceptions.IllegalReflectionOperation
    */
   public static <T> T get(Node node, Class<T> klass) {
 
@@ -52,28 +54,25 @@ public class Beanify {
   }
 
   /**
-   * populates the instance with the given properties. All the property names are lowercase. So all
-   * the camelCase properties in the instance will be changed to lowercase for population.
+   * populates the instance with the given properties. All the property names are expected to be
+   * lowercase. So all the camelCase properties in the instance will be changed to lowercase for
+   * population.
    *
-   * @param instance instance to be populated
+   * @param instance   instance to be populated
    * @param properties properties
-   * @exception ligo.exceptions.IllegalReflectionOperation
    */
-  public static <T> void populate(T instance, Map<String, Object> properties)
-      throws IllegalReflectionOperation {
+  public static <T> void populate(T instance, Map<String, Object> properties) {
 
-    for (Method method : instance.getClass().getMethods()) {
-      final String methodName = method.getName();
-      if (!EntityUtils.DEFAULT_METHODS.contains(method) // is not Object method
-          && methodName.startsWith("set")) {  //is a setter
+    for (Field field : getAllFields(instance.getClass())) {
 
-        final String propertyName = methodName.substring("set".length()).toLowerCase();
-        if (properties.containsKey(propertyName)) {
-          try {
-            method.invoke(instance, properties.get(propertyName));
-          } catch (InvocationTargetException | IllegalAccessException e) {
-            throw new IllegalReflectionOperation(e);
-          }
+      final String propertyName = field.getName().toLowerCase();
+
+      if (properties.containsKey(propertyName)) {
+        try {
+          field.setAccessible(true);
+          field.set(instance, properties.get(propertyName));
+        } catch (IllegalAccessException e) {
+          throw new IllegalReflectionOperation("Problem populating object", e);
         }
       }
     }

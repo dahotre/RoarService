@@ -29,6 +29,12 @@ public class Bleats implements BaseRelationship<Sheep, Sheep> {
     this.direction = Direction.OUTGOING;
   }
 
+  private Bleats() {
+    this.properties = null;
+    this.direction = null;
+    throw new UnsupportedOperationException("Cannot call blank constructor for Bleats");
+  }
+
   @Override
   public RelationType<Sheep, Sheep> getRelationType() {
     return BLEATS;

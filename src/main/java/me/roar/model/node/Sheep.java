@@ -8,9 +8,11 @@ import ligo.meta.*;
  */
 @Entity(type = EntityType.NODE, label = "Sheep")
 public class Sheep extends LigoEntity {
+
+  @Property
+  @Indexed(type = IndexType.FULL_TEXT, name = "sheep_name_ft")
   private String name;
 
-  @Indexed(type = IndexType.FULL_TEXT, name = "sheep_name_ft")
   public String getName() {
     return name;
   }

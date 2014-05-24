@@ -4,10 +4,10 @@ import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.meta.Entity;
 import ligo.meta.IndexType;
 import ligo.meta.Indexed;
-import ligo.meta.Transient;
+import ligo.meta.Property;
 import org.junit.Test;
 
-import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -15,19 +15,6 @@ import java.util.Set;
 import static org.junit.Assert.*;
 
 public class EntityUtilsTest {
-
-  @Test
-  public void testIsTransient() {
-
-    final Method[] methods = TestClass.class.getMethods();
-    for (Method method : methods) {
-      if (method.getName().equals("isTransientItem")) {
-        assertTrue(EntityUtils.isTransient(method));
-      } else {
-        assertFalse(EntityUtils.isTransient(method));
-      }
-    }
-  }
 
   @Test
   public void testExtractPersistableProperties() {
@@ -63,20 +50,24 @@ public class EntityUtilsTest {
 
   @Test
   public void testExtractIndexable() {
-    final Set<Method> methods = EntityUtils.extractIndexable(TestClass.class);
-    assertNotNull(methods);
-    assertEquals("only 1 method is expected to be indexed", 1, methods.size());
-    assertTrue(methods.iterator().next().isAnnotationPresent(Indexed.class));
+    final Set<Field> fields = EntityUtils.extractIndexable(TestClass.class);
+    assertNotNull(fields);
+    assertEquals("only 1 field is expected to be indexed", 1, fields.size());
+    assertTrue(fields.iterator().next().isAnnotationPresent(Indexed.class));
   }
 
   @Entity(label = "someclass")
   class TestClass {
 
+    @Property
+    @Indexed(type = IndexType.FULL_TEXT, name = "testclass_firstname_ft")
     private String firstName = "Boss";
+
     private boolean transientItem = false;
+
+    @Property
     private boolean nonTransientItem = true;
 
-    @Transient
     public boolean isTransientItem() {
       return transientItem;
     }
@@ -93,7 +84,6 @@ public class EntityUtilsTest {
       this.nonTransientItem = nonTransientItem;
     }
 
-    @Indexed(type = IndexType.FULL_TEXT, name = "testclass_firstname_ft")
     public String getFirstName() {
       return firstName;
     }

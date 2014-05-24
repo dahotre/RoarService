@@ -20,8 +20,7 @@ import org.neo4j.graphdb.index.IndexHits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -206,13 +205,12 @@ public abstract class EntityRepo {
 
     //Getting ready for node creation. First find full text indexes
     Map<String, String> keyToIndexNameMap = Maps.newHashMap();
-    final Set<Method> indexable = EntityUtils.extractIndexable(t.getClass());
+    final Set<Field> indexable = EntityUtils.extractIndexable(t.getClass());
     if (indexable != null) {
-      for (Method method : indexable) {
-        final Indexed indexed = method.getAnnotation(Indexed.class);
+      for (Field field : indexable) {
+        final Indexed indexed = field.getAnnotation(Indexed.class);
         if (indexed.type().equals(IndexType.FULL_TEXT)) {
-          int beginIndex = method.getName().startsWith("get") ? 3 : 2;
-          keyToIndexNameMap.put(method.getName().substring(beginIndex).toLowerCase(), indexed.name());
+          keyToIndexNameMap.put(field.getName().toLowerCase(), indexed.name());
         }
       }
     }
@@ -274,7 +272,7 @@ public abstract class EntityRepo {
       final Set<V> relatives = Sets.newHashSet(
           Iterables.transform(dbRelationships, new Function<Relationship, V>() {
             @Override
-            public V apply(@Nullable Relationship dbRelationship) {
+            public V apply(Relationship dbRelationship) {
               return Beanify.get(dbRelationship.getOtherNode(node),
                   (Class<V>) relationship.getRelationType().getOtherNodeType(entity.getClass()));
             }

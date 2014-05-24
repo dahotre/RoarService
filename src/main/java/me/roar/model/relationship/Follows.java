@@ -4,38 +4,38 @@ import ligo.meta.BaseRelationship;
 import ligo.meta.BasicRelationType;
 import ligo.meta.RelationType;
 import me.roar.model.node.Lion;
-import me.roar.model.node.Roar;
+import me.roar.model.node.Sheep;
 import org.neo4j.graphdb.Direction;
 
 import java.util.Map;
 
 /**
- * Relationship of a lion with its roar
+ * Relationship representing a Sheep following a Lion
  */
-public class Roars implements BaseRelationship<Lion, Roar> {
-  private static final BasicRelationType<Lion, Roar> ROARS =
-      new BasicRelationType<>(Lion.class, Roar.class, "roars");
-  private static final Roars newInstance = new Roars();
+public class Follows implements BaseRelationship<Sheep, Lion> {
+  private static final BasicRelationType<Sheep, Lion> FOLLOWS =
+      new BasicRelationType<>(Sheep.class, Lion.class, "follows");
+  private static final Follows newInstance = new Follows();
   private final Map<String, ?> properties;
   private final Direction direction;
 
-  public Roars(Map<String, ?> properties, Direction direction) {
+  public Follows(Map<String, ?> properties, Direction direction) {
     this.properties = properties;
     this.direction = direction;
   }
 
-  private Roars() {
+  private Follows() {
     this.properties = null;
     this.direction = Direction.OUTGOING;
   }
 
-  public static Roars newInstance() {
+  public static Follows newInstance() {
     return newInstance;
   }
 
   @Override
-  public RelationType<Lion, Roar> getRelationType() {
-    return ROARS;
+  public RelationType<Sheep, Lion> getRelationType() {
+    return FOLLOWS;
   }
 
   @Override

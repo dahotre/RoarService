@@ -10,11 +10,14 @@ import java.util.List;
  */
 @Entity(type = EntityType.NODE, label = "Lion")
 public class Lion extends LigoEntity {
+  @Property
+  @Indexed(type = IndexType.FULL_TEXT, name = "lion_name_ft")
   private String name;
+  @Property
+  @Indexed(type = IndexType.EXACT)
   private int age;
   private List<Roar> roars;
 
-  @Indexed(type = IndexType.FULL_TEXT, name = "lion_name_ft")
   public String getName() {
     return name;
   }
@@ -28,7 +31,6 @@ public class Lion extends LigoEntity {
     return this;
   }
 
-  @Indexed(type = IndexType.EXACT)
   public int getAge() {
     return age;
   }

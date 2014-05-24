@@ -52,11 +52,11 @@ public class LionRepo extends EntityRepo {
   }
 
   public Set<Roar> getRoars(final Lion lion) {
-    return getRelatives(lion, new Roars());
+    return getRelatives(lion, Roars.newInstance());
   }
 
   public void addRoar(final Lion lion, Roar... roars) {
-    addRelatives(lion, new Roars(), roars);
+    addRelatives(lion, Roars.newInstance(), roars);
   }
 
 }

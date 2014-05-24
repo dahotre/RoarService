@@ -8,8 +8,11 @@ import java.util.Date;
  * 
  */
 public abstract class LigoEntity {
+  @Id
   private Long id;
+  @Property
   private long cAt;
+  @Property
   private long uAt;
 
   public Long getId() {
@@ -36,7 +39,6 @@ public abstract class LigoEntity {
     this.uAt = uAt;
   }
 
-  @Transient
   public Date getCreatedAt() {
     return new Date(this.cAt);
   }
@@ -45,7 +47,6 @@ public abstract class LigoEntity {
     this.uAt = dt.getTime();
   }
 
-  @Transient
   public Date getUpdatedAt() {
     return new Date(this.uAt);
   }

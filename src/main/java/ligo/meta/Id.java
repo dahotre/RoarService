@@ -6,10 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks a getter as transient
+ * Denotes id of the entity. Has to be of type Long.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface Transient {
-  boolean value() default true;
+@Target(ElementType.FIELD)
+public @interface Id {
 }

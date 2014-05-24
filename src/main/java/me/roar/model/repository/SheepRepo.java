@@ -3,8 +3,10 @@ package me.roar.model.repository;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import ligo.repository.EntityRepo;
-import me.roar.model.relationship.Bleats;
+import me.roar.model.node.Lion;
 import me.roar.model.node.Sheep;
+import me.roar.model.relationship.Bleats;
+import me.roar.model.relationship.Follows;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 
@@ -28,5 +30,11 @@ public class SheepRepo extends EntityRepo {
     }
 
     addRelatives(sheepA, new Bleats(ImmutableMap.of("text", bleatText), Direction.OUTGOING), sheepB);
+  }
+
+  public void follows(Sheep sheep, Lion lion) {
+    addRelatives(sheep,
+        new Follows(ImmutableMap.of("cAt", new Date().getTime()), Direction.OUTGOING),
+        lion);
   }
 }

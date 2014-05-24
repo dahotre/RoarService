@@ -11,7 +11,7 @@ import static ligo.meta.IndexType.EXACT;
  * Denotes that the field should be indexed.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
+@Target(ElementType.FIELD)
 public @interface Indexed {
   public IndexType type() default EXACT;
 
