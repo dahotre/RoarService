@@ -3,7 +3,6 @@ package me.roar.model.repository;
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
 import ligo.repository.EntityRepo;
 import me.roar.model.node.Roar;
-import org.neo4j.graphdb.GraphDatabaseService;
 
 import java.util.Date;
 import java.util.Set;
@@ -15,8 +14,8 @@ public class RoarRepo extends EntityRepo {
 
   public static final String TEXT = "text";
 
-  public RoarRepo(GraphDatabaseService db) {
-    super(db);
+  public RoarRepo() {
+    super();
   }
 
   /**

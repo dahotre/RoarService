@@ -8,13 +8,12 @@ import me.roar.model.node.Sheep;
 import me.roar.model.relationship.Bleats;
 import me.roar.model.relationship.Follows;
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 
 import java.util.Date;
 
 public class SheepRepo extends EntityRepo {
-  public SheepRepo(GraphDatabaseService db) {
-    super(db);
+  public SheepRepo() {
+    super();
   }
 
   public Sheep create(Sheep sheep) {

@@ -32,12 +32,18 @@ import static org.neo4j.graphdb.DynamicLabel.label;
  */
 public abstract class EntityRepo {
 
+  private static final DBConfig DEFAULT_DB_CONFIG = new DBConfig();
+
   private static final Logger LOG = LoggerFactory.getLogger(EntityRepo.class);
 
   protected GraphDatabaseService db;
 
-  public EntityRepo(GraphDatabaseService db) {
-    this.db = db;
+  //  public EntityRepo(GraphDatabaseService db) {
+  //    this.db = db;
+  //  }
+
+  public EntityRepo() {
+    this.db = DEFAULT_DB_CONFIG.getDb();
   }
 
   /**
@@ -338,6 +344,15 @@ public abstract class EntityRepo {
       tx.success();
     }
 
+  }
+
+  /**
+   * Returns the current DB service in use.
+   *
+   * @return
+   */
+  public GraphDatabaseService getDb() {
+    return db;
   }
 
 }

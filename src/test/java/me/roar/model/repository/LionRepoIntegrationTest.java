@@ -2,7 +2,6 @@ package me.roar.model.repository;
 
 import com.google.common.collect.Sets;
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
-import me.roar.fixture.TestConstants;
 import me.roar.model.node.Lion;
 import me.roar.model.node.Roar;
 import me.roar.model.relationship.Roars;
@@ -25,8 +24,8 @@ public class LionRepoIntegrationTest {
   private static final String LION_NAME = "Ian";
   private static final String ROAR_TEXT_1 = "I architects";
   private static final String ROAR_TEXT_2 = "I chief";
-  private static final LionRepo LION_REPO = new LionRepo(TestConstants.DB_CONFIG.getDb());
-  private static final RoarRepo ROAR_REPO = new RoarRepo(TestConstants.DB_CONFIG.getDb());
+  private static final LionRepo LION_REPO = new LionRepo();
+  private static final RoarRepo ROAR_REPO = new RoarRepo();
 
   @Before
   public void setup() {
@@ -83,7 +82,7 @@ public class LionRepoIntegrationTest {
     Roar roar = ROAR_REPO.create(new Roar().withText(ROAR_TEXT_1));
     assertNotNull(roar);
     assertEquals(ROAR_TEXT_1, roar.getText());
-    GraphDatabaseService db = TestConstants.DB_CONFIG.getDb();
+    GraphDatabaseService db = LION_REPO.getDb();
     try (Transaction tx = db.beginTx()) {
       final Node roarNode = db.getNodeById(roar.getId());
       final Node lionNode = db.getNodeById(lion.getId());

@@ -4,7 +4,6 @@ import ligo.repository.EntityRepo;
 import me.roar.model.node.Lion;
 import me.roar.model.node.Roar;
 import me.roar.model.relationship.Roars;
-import org.neo4j.graphdb.GraphDatabaseService;
 
 import java.util.Date;
 import java.util.Set;
@@ -16,8 +15,8 @@ public class LionRepo extends EntityRepo {
 
   private static final String NAME = "name";
 
-  public LionRepo(GraphDatabaseService db) {
-    super(db);
+  public LionRepo() {
+    super();
   }
 
   /**
