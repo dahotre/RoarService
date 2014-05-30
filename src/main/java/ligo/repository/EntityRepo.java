@@ -182,6 +182,15 @@ public abstract class EntityRepo {
   }
 
   /**
+   * Drops all nodes corresponding to the provided klass
+   *
+   * @param klass Class
+   */
+  public void deleteAll(final Class<?> klass) {
+    throw new UnsupportedOperationException("Not yet implemented");
+  }
+
+  /**
    * If an object with the same Id exists, it's node representation will be returned.
    * Else the given instance will be persisted and the resultant node will be returned.
    *
@@ -227,11 +236,13 @@ public abstract class EntityRepo {
       newNode = db.createNode(label(labelName));
 
       for (Map.Entry<String, Object> prop : properties.entrySet()) {
-        newNode.setProperty(prop.getKey(), prop.getValue());
-        if (keyToIndexNameMap.containsKey(prop.getKey())) {
-          final Index<Node> fullTextIndex =
-              DBConfig.getFullTextIndex(keyToIndexNameMap.get(prop.getKey()));
-          fullTextIndex.add(newNode, prop.getKey(), prop.getValue());
+        if (prop.getValue() != null) {
+          newNode.setProperty(prop.getKey(), prop.getValue());
+          if (keyToIndexNameMap.containsKey(prop.getKey())) {
+            final Index<Node> fullTextIndex =
+                DBConfig.getFullTextIndex(keyToIndexNameMap.get(prop.getKey()));
+            fullTextIndex.add(newNode, prop.getKey(), prop.getValue());
+          }
         }
       }
 
