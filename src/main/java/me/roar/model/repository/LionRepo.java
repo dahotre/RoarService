@@ -27,7 +27,7 @@ public class LionRepo extends EntityRepo {
    */
   public Lion create(Lion lion) {
     lion.setCreatedAt(new Date());
-    return createUnique(lion);
+    return save(lion);
   }
 
   public Set<Lion> findByName(final String name) {

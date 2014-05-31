@@ -198,7 +198,7 @@ public abstract class EntityRepo {
    * @param <T> Type of given entity
    * @return Node representation of Object
    */
-  protected <T> Node createUniqueNode(final T t) {
+  protected final <T> Node createNode(final T t) {
     Map<String, Object> properties = EntityUtils.extractPersistableProperties(t);
     String labelName = EntityUtils.extractNodeLabel(t.getClass());
 
@@ -231,7 +231,7 @@ public abstract class EntityRepo {
     }
 
     Node newNode = null;
-    //Next TX to create new node
+    //Next TX to save new node
     try (Transaction tx = db.beginTx()) {
       newNode = db.createNode(label(labelName));
 
@@ -260,9 +260,9 @@ public abstract class EntityRepo {
    * @param t Instance of Class to be created
    * @return Created instance of class T
    */
-  protected <T> T createUnique(final T t) {
+  protected final <T> T save(final T t) {
     try (Transaction tx = db.beginTx()) {
-      T persistedT = Beanify.get(createUniqueNode(t), (Class<T>) t.getClass());
+      T persistedT = Beanify.get(createNode(t), (Class<T>) t.getClass());
       tx.success();
       return persistedT;
     }
@@ -329,7 +329,7 @@ public abstract class EntityRepo {
           final Long relativesId = EntityUtils.extractId(relative);
 
           if (relativesId == null) {
-            relativeNode = createUniqueNode(relative);
+            relativeNode = createNode(relative);
           } else {
             relativeNode = db.getNodeById(relativesId);
           }

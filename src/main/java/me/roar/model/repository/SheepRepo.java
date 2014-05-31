@@ -18,7 +18,7 @@ public class SheepRepo extends EntityRepo {
 
   public Sheep create(Sheep sheep) {
     sheep.setCreatedAt(new Date());
-    return createUnique(sheep);
+    return save(sheep);
   }
 
   public void bleats(Sheep sheepA, String bleatText, Sheep sheepB) {

@@ -1,10 +1,7 @@
 package ligo.utils;
 
 import ligo.exceptions.IllegalLabelExtractionAttemptException;
-import ligo.meta.Entity;
-import ligo.meta.IndexType;
-import ligo.meta.Indexed;
-import ligo.meta.Property;
+import ligo.meta.*;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
@@ -22,8 +19,9 @@ public class EntityUtilsTest {
     final Map<String, Object> properties =
         EntityUtils.extractPersistableProperties(testInstance);
     assertNotNull(properties);
-    assertEquals(2, properties.size());
-    assertTrue(properties.containsKey("nontransientitem"));
+    assertEquals(3, properties.size());
+    assertTrue("Did not extract id", properties.containsKey("id"));
+    assertTrue("Did not extract nontransientitem prop", properties.containsKey("nontransientitem"));
     assertTrue((boolean) properties.get("nontransientitem"));
   }
 
@@ -59,6 +57,9 @@ public class EntityUtilsTest {
   @Entity(label = "someclass")
   class TestClass {
 
+    @Id
+    private Long id;
+
     @Property
     @Indexed(type = IndexType.FULL_TEXT, name = "testclass_firstname_ft")
     private String firstName = "Boss";
@@ -67,6 +68,14 @@ public class EntityUtilsTest {
 
     @Property
     private boolean nonTransientItem = true;
+
+    public Long getId() {
+      return id;
+    }
+
+    public void setId(Long id) {
+      this.id = id;
+    }
 
     public boolean isTransientItem() {
       return transientItem;

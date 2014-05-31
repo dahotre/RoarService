@@ -26,7 +26,7 @@ public class RoarRepo extends EntityRepo {
    */
   public Roar create(Roar roar) {
     roar.setUpdatedAt(new Date());
-    return createUnique(roar);
+    return save(roar);
   }
 
   public Set<Roar> findByText(final String text) throws IllegalLabelExtractionAttemptException {

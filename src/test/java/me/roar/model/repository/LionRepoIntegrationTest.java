@@ -75,6 +75,16 @@ public class LionRepoIntegrationTest {
   }
 
   @Test
+  public void testPreventDuplicateCreate() {
+    Lion lion1 = LION_REPO.create(new Lion().withName(LION_NAME).withAge(10));
+    assertNotNull("failed in creation", lion1);
+    Lion lion2 = LION_REPO.create(lion1);
+    assertNotNull("failed in creation", lion2);
+
+    assertEquals("both lions should have same id", lion1.getId(), lion2.getId());
+  }
+
+  @Test
   public void testGetRelatives() {
     Lion lion = LION_REPO.create(new Lion().withName(LION_NAME).withAge(10));
     assertNotNull(lion);

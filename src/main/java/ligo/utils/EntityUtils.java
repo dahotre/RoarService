@@ -7,13 +7,15 @@ import ligo.meta.Entity;
 import ligo.meta.Id;
 import ligo.meta.Indexed;
 import ligo.meta.Property;
-import org.reflections.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Set;
+
+import static org.reflections.ReflectionUtils.getAllFields;
+import static org.reflections.ReflectionUtils.withAnnotation;
 
 /**
  * Helper static methods for entities
@@ -31,7 +33,8 @@ public class EntityUtils {
    */
   public static <T> Map<String, Object> extractPersistableProperties(T t) {
     Set<Field> allProperties =
-        ReflectionUtils.getAllFields(t.getClass(), ReflectionUtils.withAnnotation(Property.class));
+        getAllFields(t.getClass(), withAnnotation(Property.class));
+    allProperties.addAll(getAllFields(t.getClass(), withAnnotation(Id.class)));
     Map<String, Object> properties = null;
 
     for (Field property : allProperties) {
@@ -80,7 +83,7 @@ public class EntityUtils {
    */
   public static <T> Long extractId(T entity) {
     Set<Field> allIdFields =
-        ReflectionUtils.getAllFields(entity.getClass(), ReflectionUtils.withAnnotation(Id.class));
+        getAllFields(entity.getClass(), withAnnotation(Id.class));
     if (allIdFields == null || allIdFields.size() != 1) {
       throw new IllegalReflectionOperation("@Id should be used exactly once for a class : "
           + entity.getClass());
@@ -101,6 +104,6 @@ public class EntityUtils {
    * @return set of fields
    */
   public static Set<Field> extractIndexable(Class<?> klass) {
-    return ReflectionUtils.getAllFields(klass, ReflectionUtils.withAnnotation(Indexed.class));
+    return getAllFields(klass, withAnnotation(Indexed.class));
   }
 }
