@@ -1,61 +1,95 @@
 package ligo.config;
 
-import me.roar.model.factory.LionFactory;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Transaction;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.Sets;
+import ligo.meta.Entity;
+import ligo.meta.Indexed;
+import ligo.utils.EntityUtils;
+import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
+import org.neo4j.graphdb.index.Index;
+import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.graphdb.schema.IndexDefinition;
-import org.neo4j.graphdb.schema.Schema;
+import org.neo4j.helpers.collection.MapUtil;
+import org.reflections.ReflectionUtils;
+import org.reflections.Reflections;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Properties;
+import java.util.Set;
 
 /**
  * Configures Neo start/shut
  */
 public class DBConfig {
 
-  public static boolean isDbOn = false;
+  private static final Logger LOG = LoggerFactory.getLogger(DBConfig.class);
 
+  public static boolean isDbOn = false;
+  private static String dbPath;
+  private static ImmutableMap<String, Index<Node>> FULLTEXT_BY_NAME_MAP;
+  private static ImmutableMultimap<Class<?>, Index<Node>> FULLTEXT_BY_CLASS_MAP;
+  private final String DB_PROP_FILE = "db.properties";
+  private Properties dbProperties = new Properties();
   private GraphDatabaseService db;
 
-  private String DB_PATH = "resources/db";
-
   public DBConfig() {
+    try {
+      dbProperties.load(DBConfig.class.getClassLoader().getResourceAsStream(DB_PROP_FILE));
+      dbPath = dbProperties.getProperty("dbPath");
+    } catch (IOException e) {
+      LOG.error("Problem loading DB properties. Check db.properties on classpath", e);
+    }
     start();
   }
 
   public DBConfig(String dbPath) {
-    this.DB_PATH = dbPath;
+    this.dbPath = dbPath;
     start();
   }
 
-  public void start() {
-    db = new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(DB_PATH).newGraphDatabase();
-    isDbOn = true;
-    registerShutdownHook(db);
-    createIndexes();
+  /**
+   * Get the full text search index by it's name
+   *
+   * @param indexName Exact name of the index.This will be found on the @Indexed annotation
+   * @return Index
+   */
+  public static Index<Node> getFullTextIndex(String indexName) {
+    return FULLTEXT_BY_NAME_MAP.get(indexName);
   }
 
-  private void createIndexes() {
-    try (Transaction tx = db.beginTx()) {
-      final Schema schema = db.schema();
-      final Iterable<IndexDefinition> lionIndexes = schema.getIndexes(LionFactory.LION_LABEL);
-      for (IndexDefinition lionIndex : lionIndexes) {
-        for (String key : lionIndex.getPropertyKeys()) {
-          if (key.equals(LionFactory.NAME)) {
-            lionIndex.drop();
-            break;
-          }
-        }
-      }
-      schema.indexFor(LionFactory.LION_LABEL).on(LionFactory.NAME).create();
-      tx.success();
-    }
+  /**
+   * Get the full text search indexes for the given class
+   *
+   * @param klass Class
+   * @return Collection of Indexes
+   */
+  public static Collection<Index<Node>> getFullTextIndexes(Class<?> klass) {
+    return FULLTEXT_BY_CLASS_MAP.get(klass);
+  }
+
+  public void start() {
+    db =
+        new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(dbPath)
+            .setConfig(GraphDatabaseSettings.allow_store_upgrade, "true")
+            .setConfig(GraphDatabaseSettings.node_auto_indexing, "true").newGraphDatabase();
+    initIndexes(db);
+    isDbOn = true;
+    registerShutdownHook(db);
   }
 
   private void registerShutdownHook(final GraphDatabaseService db) {
-    Runtime.getRuntime().addShutdownHook(new Thread(){
+    Runtime.getRuntime().addShutdownHook(new Thread() {
       @Override
       public void run() {
-        System.out.println("DB going down. Bye!");
+        LOG.info("DB going down. Bye!");
         db.shutdown();
       }
     });
@@ -66,6 +100,70 @@ public class DBConfig {
       start();
     }
     return db;
+  }
+
+  private void initIndexes(final GraphDatabaseService db) {
+    final String[] modelPackages = ((String) dbProperties.get("modelPackages")).split(",");
+    Set<Class<?>> entities = new HashSet<>();
+    for (String modelPackage : modelPackages) {
+      Reflections reflections = new Reflections(modelPackage);
+      entities.addAll(reflections.getTypesAnnotatedWith(Entity.class));
+    }
+    LOG.info("DB has {} entities total.", entities.size());
+
+    final ImmutableMap.Builder<String, Index<Node>> fullTextIndexBuilder = ImmutableMap.builder();
+    final ImmutableMultimap.Builder<Class<?>, Index<Node>> fullTextByClassBuilder =
+        ImmutableMultimap.
+            builder();
+    try (Transaction tx = db.beginTx()) {
+      final Set<String> nodeIndexNames = Sets.newHashSet(db.index().nodeIndexNames());
+
+      for (Class<?> entity : entities) {
+        Set<Field> indexedFields = ReflectionUtils.
+            getAllFields(entity, ReflectionUtils.withAnnotation(Indexed.class));
+
+        final Label label = DynamicLabel.label(EntityUtils.extractNodeLabel(entity));
+        final Iterable<IndexDefinition> schemaIndexes = db.schema().getIndexes(label);
+        for (Field indexedField : indexedFields) {
+          final Indexed indexedAnnotation = indexedField.getAnnotation(Indexed.class);
+
+          INDEX_SWITCH:
+          switch (indexedAnnotation.type()) {
+            case EXACT:
+
+              String indexableProperty = indexedField.getName().toLowerCase();
+
+              for (IndexDefinition schemaIndex : schemaIndexes) {
+                if (schemaIndex.getPropertyKeys().iterator().hasNext()
+                    && schemaIndex.getPropertyKeys().iterator().next().equals(indexableProperty)) {
+
+                  break INDEX_SWITCH;
+                }
+              }
+
+              db.schema().indexFor(label).on(indexableProperty).create();
+              LOG.info("Created index for {} on {}", label, indexableProperty);
+              break;
+
+            case FULL_TEXT:
+
+              final Index<Node> nodeIndex = db.index().forNodes(indexedAnnotation.name(),
+                  MapUtil.stringMap(IndexManager.PROVIDER, "lucene", "type", "fulltext"));
+
+              fullTextIndexBuilder.put(indexedAnnotation.name(), nodeIndex);
+              fullTextByClassBuilder.put(entity, nodeIndex);
+
+              LOG.info("Init index {}", indexedAnnotation.name());
+
+              break;
+          }
+        }
+        FULLTEXT_BY_NAME_MAP = fullTextIndexBuilder.build();
+        FULLTEXT_BY_CLASS_MAP = fullTextByClassBuilder.build();
+      }
+
+      tx.success();
+    }
   }
 
 }

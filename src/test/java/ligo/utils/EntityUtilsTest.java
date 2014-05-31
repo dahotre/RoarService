@@ -1,29 +1,17 @@
 package ligo.utils;
 
-import ligo.meta.Transient;
+import ligo.exceptions.IllegalLabelExtractionAttemptException;
+import ligo.meta.*;
 import org.junit.Test;
 
-import java.lang.reflect.Method;
+import java.lang.reflect.Field;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
 public class EntityUtilsTest {
-
-  @Test
-  public void testIsTransient() {
-
-    final Method[] methods = TestClass.class.getMethods();
-    for (Method method : methods) {
-      System.out.println("Testing " + method.getName());
-      if (method.getName().equals("getTransientItem")) {
-        assertTrue(EntityUtils.isTransient(method));
-      }
-      else {
-        assertFalse(EntityUtils.isTransient(method));
-      }
-    }
-  }
 
   @Test
   public void testExtractPersistableProperties() {
@@ -31,18 +19,86 @@ public class EntityUtilsTest {
     final Map<String, Object> properties =
         EntityUtils.extractPersistableProperties(testInstance);
     assertNotNull(properties);
-    assertEquals(1, properties.size());
-    assertTrue(properties.containsKey("NonTransientItem"));
-    assertTrue((boolean) properties.get("NonTransientItem"));
+    assertEquals(3, properties.size());
+    assertTrue("Did not extract id", properties.containsKey("id"));
+    assertTrue("Did not extract nontransientitem prop", properties.containsKey("nontransientitem"));
+    assertTrue((boolean) properties.get("nontransientitem"));
   }
 
+  @Test(expected = IllegalLabelExtractionAttemptException.class)
+  public void testExtractNodeLabel() throws IllegalLabelExtractionAttemptException {
+    final String nodeLabel = EntityUtils.extractNodeLabel(TestClass.class);
+    assertEquals("someclass", nodeLabel);
 
+    EntityUtils.extractNodeLabel(String.class);
+  }
+
+  @Test
+  public void testPopulate() {
+    Map<String, Object> properites = new HashMap<>(3);
+    properites.put("transientitem", true);
+    properites.put("nontransientitem", false);
+    properites.put("firstname", "Bobby");
+    TestClass instance = new TestClass();
+    Beanify.populate(instance, properites);
+    assertEquals(true, instance.isTransientItem());
+    assertEquals(false, instance.isNonTransientItem());
+    assertEquals("Bobby", instance.getFirstName());
+  }
+
+  @Test
+  public void testExtractIndexable() {
+    final Set<Field> fields = EntityUtils.extractIndexable(TestClass.class);
+    assertNotNull(fields);
+    assertEquals("only 1 field is expected to be indexed", 1, fields.size());
+    assertTrue(fields.iterator().next().isAnnotationPresent(Indexed.class));
+  }
+
+  @Entity(label = "someclass")
   class TestClass {
-    @Transient public boolean getTransientItem() {
-      return false;
+
+    @Id
+    private Long id;
+
+    @Property
+    @Indexed(type = IndexType.FULL_TEXT, name = "testclass_firstname_ft")
+    private String firstName = "Boss";
+
+    private boolean transientItem = false;
+
+    @Property
+    private boolean nonTransientItem = true;
+
+    public Long getId() {
+      return id;
     }
-    public boolean getNonTransientItem() {
-      return true;
+
+    public void setId(Long id) {
+      this.id = id;
+    }
+
+    public boolean isTransientItem() {
+      return transientItem;
+    }
+
+    public void setTransientItem(boolean transientItem) {
+      this.transientItem = transientItem;
+    }
+
+    public boolean isNonTransientItem() {
+      return nonTransientItem;
+    }
+
+    public void setNonTransientItem(boolean nonTransientItem) {
+      this.nonTransientItem = nonTransientItem;
+    }
+
+    public String getFirstName() {
+      return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+      this.firstName = firstName;
     }
   }
 }

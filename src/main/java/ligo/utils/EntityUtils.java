@@ -1,51 +1,109 @@
 package ligo.utils;
 
-import ligo.meta.Transient;
+import com.google.common.collect.Maps;
+import ligo.exceptions.IllegalLabelExtractionAttemptException;
+import ligo.exceptions.IllegalReflectionOperation;
+import ligo.meta.Entity;
+import ligo.meta.Id;
+import ligo.meta.Indexed;
+import ligo.meta.Property;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.lang.reflect.Field;
 import java.util.Map;
+import java.util.Set;
+
+import static org.reflections.ReflectionUtils.getAllFields;
+import static org.reflections.ReflectionUtils.withAnnotation;
 
 /**
  * Helper static methods for entities
  */
 public class EntityUtils {
 
-  private static final List<Method> DEFAULT_METHODS = Arrays.asList(Object.class.getMethods());
+  private static final Logger LOG = LoggerFactory.getLogger(EntityUtils.class);
 
-  public static boolean isTransient(Method m) {
-    if (m == null || m.getAnnotations() == null) {
-      return false;
-    }
+  /**
+   * Extracts keys and values of all the @Property annotated fields
+   *
+   * @param t   Instance of the entity
+   * @param <T> Type of entity
+   * @return Map of key, value of fields
+   */
+  public static <T> Map<String, Object> extractPersistableProperties(T t) {
+    Set<Field> allProperties =
+        getAllFields(t.getClass(), withAnnotation(Property.class));
+    allProperties.addAll(getAllFields(t.getClass(), withAnnotation(Id.class)));
+    Map<String, Object> properties = null;
 
-    for (Annotation annotation : m.getAnnotations()) {
-      if (annotation.annotationType().equals(Transient.class)) {
-        return true;
+    for (Field property : allProperties) {
+      property.setAccessible(true);
+      try {
+        if (properties == null) {
+          properties = Maps.newHashMap();
+        }
+        properties.put(property.getName().toLowerCase(), property.get(t));
+      } catch (IllegalAccessException e) {
+        new IllegalReflectionOperation(e);
       }
     }
 
-    return false;
+    return properties;
   }
 
-  public static <T> Map<String, Object> extractPersistableProperties(T t) {
+  /**
+   * Extracts the label property of @Entity annotation from a class. If label value is not present,
+   * then the class's simple name is returned as the default label.
+   *
+   * @param klass Candidate Class
+   * @return Label name
+   * @throws IllegalLabelExtractionAttemptException if the klass does not have @Entity annotation
+   */
+  public static String extractNodeLabel(Class klass) throws IllegalLabelExtractionAttemptException {
 
-    Map<String, Object> properties = new HashMap<>(5);
-    for (Method method : t.getClass().getMethods()) {
-      String methodName = method.getName();
-
-      if ( !DEFAULT_METHODS.contains(method) &&  (methodName.startsWith("get") || methodName.startsWith("is")) && !isTransient(method) ) {
-        try {
-          final Object value = method.invoke(t);
-          properties.put(methodName.substring(3), value);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-          e.printStackTrace();
-        }
-      }
+    if (!klass.isAnnotationPresent(Entity.class)) {
+      throw new IllegalLabelExtractionAttemptException("class does not have @Entity annotation");
     }
-    return properties;
+
+    final String nodeLabel = ((Entity) klass.getAnnotation(Entity.class)).label().toLowerCase();
+    if (nodeLabel == null || nodeLabel.isEmpty()) {
+      return klass.getSimpleName().toLowerCase();
+    } else {
+      return nodeLabel;
+    }
+  }
+
+  /**
+   * Extracts the Long id from the given entity class
+   *
+   * @param entity Entity with a @Id Long field
+   * @param <T>    Class of entity
+   * @return id
+   */
+  public static <T> Long extractId(T entity) {
+    Set<Field> allIdFields =
+        getAllFields(entity.getClass(), withAnnotation(Id.class));
+    if (allIdFields == null || allIdFields.size() != 1) {
+      throw new IllegalReflectionOperation("@Id should be used exactly once for a class : "
+          + entity.getClass());
+    }
+    Field idField = allIdFields.iterator().next();
+    idField.setAccessible(true);
+    try {
+      return ((Long) idField.get(entity));
+    } catch (IllegalAccessException e) {
+      throw new IllegalReflectionOperation("@Id supports only Long");
+    }
+  }
+
+  /**
+   * Extract indexable fields for a given Class
+   *
+   * @param klass Class
+   * @return set of fields
+   */
+  public static Set<Field> extractIndexable(Class<?> klass) {
+    return getAllFields(klass, withAnnotation(Indexed.class));
   }
 }
